@@ -147,9 +147,11 @@ func fillCard(highlights HighlightDatabase) {
 
 	totalAnswers := correctAnswers + wrongAnswers
 	if totalAnswers > 0 {
-		score := float64(correctAnswers) / float64(totalAnswers)
-		h.Score.Sum = h.Score.Sum + score
 		h.Score.Count = h.Score.Count + 1
+
+		score := float64(correctAnswers) / float64(totalAnswers)
+		score = score * float64(h.Score.Count)
+		h.Score.Sum = h.Score.Sum + score
 	}
 
 	fmt.Printf("%s\n", h.Content)

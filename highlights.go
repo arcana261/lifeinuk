@@ -5,10 +5,15 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"fmt"
+	"math"
 	"math/rand"
 	"os"
 	"slices"
 	"strings"
+)
+
+const (
+	UntrustedNext = 0.9
 )
 
 type HighlightDatabase struct {
@@ -46,9 +51,11 @@ func (db HighlightDatabase) WriteScore(fname string) error {
 }
 
 type Token struct {
-	ID         int
-	Content    string
-	NextTokens []NextToken
+	ID                int
+	Content           string
+	NextTokens        []NextToken
+	AppearInNextToken int
+	SkipPuzzle        bool
 }
 
 func (t Token) NominateNextTokens(db HighlightDatabase, count int) []int {
@@ -87,45 +94,7 @@ func (t Token) NominateNextTokens(db HighlightDatabase, count int) []int {
 }
 
 func (t Token) ShouldSkipPuzzle() bool {
-	switch t.Content {
-	case "are":
-		return true
-	case "the":
-		return true
-	case "is":
-		return true
-	case "that":
-		return true
-	case "which":
-		return true
-	case "not":
-		return true
-	case "in":
-		return true
-	case "for":
-		return true
-	case "they":
-		return true
-	case "was":
-		return true
-	case "be":
-		return true
-	case "and":
-		return true
-	case "there":
-		return true
-	case "a":
-		return true
-	case "it":
-		return true
-	case "what":
-		return true
-	case "these":
-		return true
-	default:
-	}
-
-	return false
+	return t.SkipPuzzle
 }
 
 type NextToken struct {
@@ -142,8 +111,9 @@ type Highlight struct {
 }
 
 type Score struct {
-	Sum   float64
-	Count int
+	Sum     float64
+	Count   int
+	Average float64
 }
 
 func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
@@ -223,6 +193,35 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 		resultTokenMap[tokenID] = token
 	}
 
+	var tokenIDs []int
+	for tokenID, token := range resultTokenMap {
+		for _, next := range token.NextTokens {
+			temp := resultTokenMap[next.ID]
+			temp.AppearInNextToken += 1
+			resultTokenMap[next.ID] = temp
+		}
+		tokenIDs = append(tokenIDs, tokenID)
+	}
+	slices.SortFunc(tokenIDs, func(x, y int) int {
+		xv := resultTokenMap[x].AppearInNextToken
+		yv := resultTokenMap[y].AppearInNextToken
+		if xv < yv {
+			return -1
+		}
+		if xv > yv {
+			return 1
+		}
+		return 0
+	})
+	if len(tokenIDs) > 0 {
+		threshold := max(0, int(math.Floor(float64(len(tokenIDs))*UntrustedNext)))
+		for j := len(tokenIDs) - 1; j >= threshold; j-- {
+			temp := resultTokenMap[tokenIDs[j]]
+			temp.SkipPuzzle = true
+			resultTokenMap[tokenIDs[j]] = temp
+		}
+	}
+
 	highlightIDToIndex := make(map[string]int)
 	for i := 0; i < len(result); i++ {
 		highlightIDToIndex[result[i].ID] = i
@@ -238,7 +237,7 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 
 	var sumScore float64
 	for i := 0; i < len(result); i++ {
-		f := 1.0 - (result[i].Score.Sum / float64(result[i].Score.Count+1))
+		f := 1.0 - result[i].Score.Average
 		result[i].CumulativeProbability = f
 		sumScore = sumScore + f
 	}
@@ -343,8 +342,9 @@ func readScores(fname string) map[string]Score {
 		}
 
 		result[id] = Score{
-			Sum:   totalSum,
-			Count: count,
+			Sum:     totalSum,
+			Count:   count,
+			Average: totalSum / (float64(count)*float64(count+1)/float64(2) + 1),
 		}
 	}
 
