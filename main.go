@@ -23,7 +23,7 @@ func main() {
 		}
 		defer term.Restore(int(os.Stdin.Fd()), oldState)*/
 
-	highlights, err := ReadHighlights("highlights.txt")
+	highlights, err := ReadHighlights("highlights.txt", "scores.txt")
 	if err != nil {
 		panic(err)
 	}
@@ -52,8 +52,7 @@ func main() {
 }
 
 func fillCard(highlights HighlightDatabase) {
-	idx := rand.Intn(len(highlights.Highlights))
-	h := highlights.Highlights[idx]
+	h := highlights.PickHighlight()
 
 	shouldSkip := func(t int) bool {
 		switch highlights.TokenMap[t].Content {
@@ -89,11 +88,16 @@ func fillCard(highlights HighlightDatabase) {
 			return true
 		case "what":
 			return true
+		case "these":
+			return true
 		default:
 		}
 
 		return false
 	}
+
+	correctAnswers := 0
+	wrongAnswers := 0
 
 	for i := 1; i < len(h.Tokens); i++ {
 		if shouldSkip(h.Tokens[i]) {
@@ -176,17 +180,27 @@ func fillCard(highlights HighlightDatabase) {
 		selected := nextTokens[next]
 		if h.Tokens[i] == selected {
 			fmt.Fprintf(os.Stdout, "%sCORRECT!%s\n", colorGreen, colorNone)
+			correctAnswers = correctAnswers + 1
 		} else {
 			fmt.Fprintf(os.Stdout, "%sWRONG: %s%s\n", colorRed, highlights.TokenMap[h.Tokens[i]].Content, colorNone)
+			wrongAnswers = wrongAnswers + 1
 		}
 	}
 
-	fmt.Printf("%s\n", highlights.Highlights[idx].Content)
+	totalAnswers := correctAnswers + wrongAnswers
+	if totalAnswers > 0 {
+		score := float64(correctAnswers) / float64(totalAnswers)
+		h.Score.Sum = h.Score.Sum + score
+		h.Score.Count = h.Score.Count + 1
+	}
+
+	fmt.Printf("%s\n", h.Content)
+	highlights.WriteScore("scores.txt")
 }
 
 func printRandomCard(highlights HighlightDatabase) {
-	idx := rand.Intn(len(highlights.Highlights))
-	fmt.Printf("%s\n", highlights.Highlights[idx].Content)
+	h := highlights.PickHighlight()
+	fmt.Printf("%s\n", h.Content)
 }
 
 func readOne() string {
