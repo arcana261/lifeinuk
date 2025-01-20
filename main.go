@@ -54,59 +54,17 @@ func main() {
 func fillCard(highlights HighlightDatabase) {
 	h := highlights.PickHighlight()
 
-	shouldSkip := func(t int) bool {
-		switch highlights.TokenMap[t].Content {
-		case "are":
-			return true
-		case "the":
-			return true
-		case "is":
-			return true
-		case "that":
-			return true
-		case "which":
-			return true
-		case "not":
-			return true
-		case "in":
-			return true
-		case "for":
-			return true
-		case "they":
-			return true
-		case "was":
-			return true
-		case "be":
-			return true
-		case "and":
-			return true
-		case "there":
-			return true
-		case "a":
-			return true
-		case "it":
-			return true
-		case "what":
-			return true
-		case "these":
-			return true
-		default:
-		}
-
-		return false
-	}
-
 	correctAnswers := 0
 	wrongAnswers := 0
 
 	for i := 1; i < len(h.Tokens); i++ {
-		if shouldSkip(h.Tokens[i]) {
+		if highlights.TokenMap[h.Tokens[i]].ShouldSkipPuzzle() {
 			continue
 		}
 
 		var nextTokens []int
 		nextTokens = append(nextTokens, h.Tokens[i])
-		nextTokens = append(nextTokens, highlights.TokenMap[h.Tokens[i-1]].NominateNextTokens(4)...)
+		nextTokens = append(nextTokens, highlights.TokenMap[h.Tokens[i-1]].NominateNextTokens(highlights, 4)...)
 		slices.Sort(nextTokens)
 
 		var nextTokensUnique []int

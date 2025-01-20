@@ -51,10 +51,11 @@ type Token struct {
 	NextTokens []NextToken
 }
 
-func (t Token) NominateNextTokens(count int) []int {
+func (t Token) NominateNextTokens(db HighlightDatabase, count int) []int {
 	var result []int
 	mark := make([]bool, len(t.NextTokens))
-	for len(result) < len(t.NextTokens) && len(result) < count {
+	skipped := 0
+	for (skipped+len(result)) < len(t.NextTokens) && (skipped+len(result)) < count {
 		target := rand.Float64()
 		lo := 0
 		hi := len(t.NextTokens) - 1
@@ -73,11 +74,58 @@ func (t Token) NominateNextTokens(count int) []int {
 			}
 		}
 		if !mark[lo] {
-			result = append(result, t.NextTokens[lo].ID)
 			mark[lo] = true
+
+			if !db.TokenMap[t.NextTokens[lo].ID].ShouldSkipPuzzle() {
+				result = append(result, t.NextTokens[lo].ID)
+			} else {
+				skipped = skipped + 1
+			}
 		}
 	}
 	return result
+}
+
+func (t Token) ShouldSkipPuzzle() bool {
+	switch t.Content {
+	case "are":
+		return true
+	case "the":
+		return true
+	case "is":
+		return true
+	case "that":
+		return true
+	case "which":
+		return true
+	case "not":
+		return true
+	case "in":
+		return true
+	case "for":
+		return true
+	case "they":
+		return true
+	case "was":
+		return true
+	case "be":
+		return true
+	case "and":
+		return true
+	case "there":
+		return true
+	case "a":
+		return true
+	case "it":
+		return true
+	case "what":
+		return true
+	case "these":
+		return true
+	default:
+	}
+
+	return false
 }
 
 type NextToken struct {
