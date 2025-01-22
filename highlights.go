@@ -22,18 +22,46 @@ type HighlightDatabase struct {
 }
 
 func (db HighlightDatabase) PickHighlight() *Highlight {
-	target := rand.Float64()
+	if len(db.Highlights) == 0 {
+		return nil
+	}
+
 	lo := 0
 	hi := len(db.Highlights) - 1
-	for lo < hi {
-		mid := (lo + hi) / 2
-		if db.Highlights[mid].CumulativeProbability < target {
-			lo = mid + 1
-		} else if db.Highlights[mid].CumulativeProbability > target {
-			hi = mid
+	for lo <= hi && db.Highlights[lo].Picked {
+		lo = lo + 1
+	}
+	for lo <= hi && db.Highlights[hi].Picked {
+		hi = hi - 1
+	}
+	if lo > hi {
+		for i := 0; i < len(db.Highlights); i++ {
+			db.Highlights[i].Picked = false
+		}
+		return db.PickHighlight()
+	}
+
+	startLo := lo
+	startHi := hi
+
+	for {
+		target := rand.Float64()
+		lo = startLo
+		hi = startHi
+
+		for lo < hi {
+			mid := (lo + hi) / 2
+			if db.Highlights[mid].CumulativeProbability < target {
+				lo = mid + 1
+			} else if db.Highlights[mid].CumulativeProbability > target {
+				hi = mid
+			}
+		}
+		if !db.Highlights[lo].Picked {
+			db.Highlights[lo].Picked = true
+			return &db.Highlights[lo]
 		}
 	}
-	return &db.Highlights[lo]
 }
 
 func (db HighlightDatabase) WriteScore(fname string) error {
@@ -108,6 +136,7 @@ type Highlight struct {
 	Tokens                []int
 	Score                 Score
 	CumulativeProbability float64
+	Picked                bool
 }
 
 type Score struct {
