@@ -26,25 +26,32 @@ func (db HighlightDatabase) PickHighlight() *Highlight {
 		return nil
 	}
 
+	minCount := -1
+	for _, h := range db.Highlights {
+		if minCount < 0 || h.Score.Count < minCount {
+			minCount = h.Score.Count
+		}
+	}
+
 	lo := 0
 	hi := len(db.Highlights) - 1
-	for lo <= hi && db.Highlights[lo].Picked {
+	for lo < hi && db.Highlights[lo].Score.Count != minCount {
 		lo = lo + 1
 	}
-	for lo <= hi && db.Highlights[hi].Picked {
+	for lo < hi && db.Highlights[hi].Score.Count != minCount {
 		hi = hi - 1
 	}
-	if lo > hi {
-		for i := 0; i < len(db.Highlights); i++ {
-			db.Highlights[i].Picked = false
-		}
-		return db.PickHighlight()
+	if lo == hi {
+		lo = 0
+		hi = len(db.Highlights) - 1
 	}
 
 	startLo := lo
 	startHi := hi
 
-	for {
+	var result *Highlight
+
+	for result == nil {
 		target := rand.Float64()
 		lo = startLo
 		hi = startHi
@@ -57,11 +64,13 @@ func (db HighlightDatabase) PickHighlight() *Highlight {
 				hi = mid
 			}
 		}
-		if !db.Highlights[lo].Picked {
-			db.Highlights[lo].Picked = true
-			return &db.Highlights[lo]
+
+		if db.Highlights[lo].Score.Count == minCount {
+			result = &db.Highlights[lo]
 		}
 	}
+
+	return result
 }
 
 func (db HighlightDatabase) WriteScore(fname string) error {
@@ -136,7 +145,6 @@ type Highlight struct {
 	Tokens                []int
 	Score                 Score
 	CumulativeProbability float64
-	Picked                bool
 }
 
 type Score struct {
@@ -329,6 +337,9 @@ func tokenizeString(str string) []string {
 		"]", " ",
 		"{", " ",
 		"}", " ",
+		"\u2018", " ",
+		"\u2019", " ",
+		"\u2013", " ",
 	)
 
 	str = replacer.Replace(str)
