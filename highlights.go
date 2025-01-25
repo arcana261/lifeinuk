@@ -105,41 +105,24 @@ type Token struct {
 
 func (t Token) NominateNextTokens(db HighlightDatabase, count int) []int {
 	var result []int
-	mark := make([]bool, len(t.NextTokens))
-	skipped := 0
-	for (skipped+len(result)) < len(t.NextTokens) && (skipped+len(result)) < count {
-		target := rand.Float64()
-		lo := 0
-		hi := len(t.NextTokens) - 1
-		for lo < hi && mark[lo] {
-			lo = lo + 1
-		}
-		for lo < hi && mark[hi] {
-			hi = hi - 1
-		}
-		for lo < hi {
-			mid := (lo + hi) / 2
-			if t.NextTokens[mid].CumulativeProbability < target {
-				lo = mid + 1
-			} else if t.NextTokens[mid].CumulativeProbability > target {
-				hi = mid
+	nexts := cloneSlice(t.NextTokens)
+	nexts = removeFunc(nexts, func(nt NextToken) bool {
+		return db.TokenMap[nt.ID].SkipPuzzle
+	})
+	for len(result) < count && len(nexts) > 0 {
+		i := lowerBoundFunc(nexts, rand.Float64(), func(nt NextToken, f float64) int {
+			if nt.CumulativeProbability+1e-5 < f {
+				return -1
 			}
-		}
-		if !mark[lo] {
-			mark[lo] = true
-
-			if !db.TokenMap[t.NextTokens[lo].ID].ShouldSkipPuzzle() {
-				result = append(result, t.NextTokens[lo].ID)
-			} else {
-				skipped = skipped + 1
+			if nt.CumulativeProbability-1e-5 > f {
+				return 1
 			}
-		}
+			return 0
+		})
+		result = append(result, nexts[i].ID)
+		nexts = removeAt(nexts, i)
 	}
 	return result
-}
-
-func (t Token) ShouldSkipPuzzle() bool {
-	return t.SkipPuzzle
 }
 
 type NextToken struct {

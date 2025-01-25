@@ -2,9 +2,7 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
 	"os"
-	"slices"
 	"strings"
 )
 
@@ -13,18 +11,11 @@ const (
 	colorGreen = "\033[0;32m"
 	colorNone  = "\033[0m"
 
-	alignmentWidth = 50
+	alignmentWidth    = 50
+	puzzleChoiceCount = 4
 )
 
 func main() {
-	// switch stdin into 'raw' mode
-	/*
-		oldState, err := term.MakeRaw(int(os.Stdin.Fd()))
-		if err != nil {
-			panic(err)
-		}
-		defer term.Restore(int(os.Stdin.Fd()), oldState)*/
-
 	highlights, err := ReadHighlights("highlights.txt", "scores.txt")
 	if err != nil {
 		panic(err)
@@ -34,9 +25,6 @@ func main() {
 	}
 	copyFile("highlights.txt", "highlights.txt.bak")
 	WriteHighlights(highlights, "highlights.txt")
-
-	//fmt.Println(highlights)
-	//fmt.Println(highlights.TokenMap[45].NominateNextTokens(4))
 
 	for {
 		fmt.Printf("\n")
@@ -65,53 +53,27 @@ func fillCard(highlights HighlightDatabase) {
 	wrongAnswers := 0
 
 	for i := 1; i < len(h.Tokens); i++ {
-		if highlights.TokenMap[h.Tokens[i]].ShouldSkipPuzzle() {
+		if highlights.TokenMap[h.Tokens[i]].SkipPuzzle {
+			//fmt.Printf("skipping '%s' due to SkipPuzzle\n", highlights.TokenMap[h.Tokens[i]].Content)
 			continue
 		}
 
-		var nextTokens []int
-		nextTokens = append(nextTokens, h.Tokens[i])
-		nextTokens = append(nextTokens, highlights.TokenMap[h.Tokens[i-1]].NominateNextTokens(highlights, 4)...)
-		slices.Sort(nextTokens)
-
-		var nextTokensUnique []int
-		for j := 0; j < len(nextTokens); j++ {
-			if j == 0 || nextTokens[j] != nextTokens[j-1] {
-				nextTokensUnique = append(nextTokensUnique, nextTokens[j])
-			}
-		}
-		nextTokens = nextTokensUnique
-
-		for j := 0; j < len(nextTokens); j++ {
-			k := j + rand.Intn(len(nextTokens)-j)
-			if j != k {
-				temp := nextTokens[j]
-				nextTokens[j] = nextTokens[k]
-				nextTokens[k] = temp
-			}
-		}
-		correctIndex := -1
-		for j := 0; j < len(nextTokens); j++ {
-			if nextTokens[j] == h.Tokens[i] {
-				correctIndex = j
-				break
-			}
+		nextTokens := highlights.TokenMap[h.Tokens[i-1]].NominateNextTokens(highlights, puzzleChoiceCount)
+		permutateSlice(nextTokens)
+		if findInSlice(nextTokens, h.Tokens[i]) < 0 {
+			nextTokens = nextTokens[1:]
+			nextTokens = append(nextTokens, h.Tokens[i])
+			permutateSlice(nextTokens)
 		}
 		if len(nextTokens) < 2 {
+			//var allNextTokens []string
+			//for _, nt := range highlights.TokenMap[h.Tokens[i-1]].NextTokens {
+			//allNextTokens = append(allNextTokens, highlights.TokenMap[nt.ID].Content)
+			//}
+			//fmt.Printf("skipping '%s' due to len(nextTokens)<2 [case 1][%s]\n", highlights.TokenMap[h.Tokens[i]].Content, strings.Join(allNextTokens, ","))
 			continue
 		}
 
-		if correctIndex == len(nextTokens)-1 {
-			j := rand.Intn(len(nextTokens) - 1)
-			temp := nextTokens[j]
-			nextTokens[j] = nextTokens[correctIndex]
-			nextTokens[correctIndex] = temp
-		}
-		nextTokens = nextTokens[:(len(nextTokens) - 1)]
-
-		if len(nextTokens) < 2 {
-			continue
-		}
 		next := -1
 
 		for next < 0 || next >= len(nextTokens) {
@@ -163,7 +125,7 @@ func fillCard(highlights HighlightDatabase) {
 
 	fmt.Printf("%s\n", h.Content)
 	if fileExists("scores.txt") {
-		copyFile("scores.txt", "score.txt.bak")
+		copyFile("scores.txt", "scores.txt.bak")
 	}
 	highlights.WriteScore("scores.txt")
 }
