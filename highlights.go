@@ -17,8 +17,9 @@ const (
 )
 
 type HighlightDatabase struct {
-	Highlights []Highlight
-	TokenMap   map[int]Token
+	Highlights      []Highlight
+	TokenMap        map[int]Token
+	UnmatchedScores map[string]Score
 }
 
 func (db HighlightDatabase) PickHighlight() *Highlight {
@@ -82,6 +83,13 @@ func (db HighlightDatabase) WriteScore(fname string) error {
 		}
 
 		buff.WriteString(fmt.Sprintf("%s %f %d\n", h.ID, h.Score.Sum, h.Score.Count))
+	}
+	for id, score := range db.UnmatchedScores {
+		if score.Count < 1 {
+			continue
+		}
+
+		buff.WriteString(fmt.Sprintf("%s %f %d\n", id, score.Sum, score.Count))
 	}
 
 	return os.WriteFile(fname, buff.Bytes(), 0644)
@@ -297,9 +305,11 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 		highlightIDToIndex[result[i].ID] = i
 	}
 
+	unmatchedScores := make(map[string]Score)
 	for id, score := range readScores(scores) {
 		index, ok := highlightIDToIndex[id]
 		if !ok {
+			unmatchedScores[id] = score
 			continue
 		}
 		result[index].Score = score
@@ -328,8 +338,9 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 	}
 
 	return HighlightDatabase{
-		TokenMap:   resultTokenMap,
-		Highlights: result,
+		TokenMap:        resultTokenMap,
+		Highlights:      result,
+		UnmatchedScores: unmatchedScores,
 	}, nil
 }
 
