@@ -145,12 +145,44 @@ type Highlight struct {
 	Tokens                []int
 	Score                 Score
 	CumulativeProbability float64
+	Index                 int
 }
 
 type Score struct {
 	Sum     float64
 	Count   int
 	Average float64
+}
+
+func WriteHighlights(db HighlightDatabase, fname string) {
+	var order []int
+	for i := 0; i < len(db.Highlights); i++ {
+		order = append(order, i)
+	}
+	slices.SortFunc(order, func(a, b int) int {
+		av := db.Highlights[a].Index
+		bv := db.Highlights[b].Index
+		cv := av - bv
+		if cv < 0 {
+			return -1
+		}
+		if cv > 0 {
+			return 1
+		}
+		return 0
+	})
+
+	var buff bytes.Buffer
+	for i := 0; i < len(db.Highlights); i++ {
+		if i > 0 {
+			buff.WriteString("\n\n---\n\n")
+		}
+		buff.WriteString(db.Highlights[order[i]].Content)
+	}
+	err := os.WriteFile(fname, buff.Bytes(), 0644)
+	if err != nil {
+		panic(err)
+	}
 }
 
 func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
@@ -192,6 +224,7 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 			ID:      id,
 			Content: strings.TrimSpace(line),
 			Tokens:  lineTokens,
+			Index:   len(result),
 		})
 	}
 

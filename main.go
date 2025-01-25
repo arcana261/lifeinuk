@@ -12,6 +12,8 @@ const (
 	colorRed   = "\033[0;31m"
 	colorGreen = "\033[0;32m"
 	colorNone  = "\033[0m"
+
+	alignmentWidth = 50
 )
 
 func main() {
@@ -27,6 +29,11 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	for i := 0; i < len(highlights.Highlights); i++ {
+		highlights.Highlights[i].Content = fixAlignment(highlights.Highlights[i].Content, alignmentWidth)
+	}
+	copyFile("highlights.txt", "highlights.txt.bak")
+	WriteHighlights(highlights, "highlights.txt")
 
 	//fmt.Println(highlights)
 	//fmt.Println(highlights.TokenMap[45].NominateNextTokens(4))
@@ -155,6 +162,9 @@ func fillCard(highlights HighlightDatabase) {
 	}
 
 	fmt.Printf("%s\n", h.Content)
+	if fileExists("scores.txt") {
+		copyFile("scores.txt", "score.txt.bak")
+	}
 	highlights.WriteScore("scores.txt")
 }
 
