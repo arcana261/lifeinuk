@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strings"
@@ -9,9 +10,11 @@ import (
 )
 
 const (
-	colorRed   = "\033[0;31m"
-	colorGreen = "\033[0;32m"
-	colorNone  = "\033[0m"
+	colorRed    = "\033[0;31m"
+	colorGreen  = "\033[0;32m"
+	colorYellow = "\033[0;33m"
+	colorBlue   = "\033[0;34m"
+	colorNone   = "\033[0m"
 
 	alignmentWidth    = 50
 	puzzleChoiceCount = 4
@@ -53,6 +56,7 @@ func fillCard(highlights HighlightDatabase) {
 
 	correctAnswers := 0
 	wrongAnswers := 0
+	lastI := -1
 
 	for i := 1; i < len(h.Tokens); i++ {
 		if highlights.TokenMap[h.Tokens[i]].SkipPuzzle {
@@ -82,19 +86,23 @@ func fillCard(highlights HighlightDatabase) {
 		next := -1
 
 		for next < 0 || next >= len(nextTokens) {
-			fmt.Printf("\n> ")
+			var lineToPrint bytes.Buffer
+
+			lineToPrint.WriteString("\n> ")
 			for j := 0; j < i; j++ {
 				txt := highlights.TokenMap[h.Tokens[j]].Content
-				fmt.Printf("%s ", txt)
+				if j == lastI {
+					lineToPrint.WriteString(fmt.Sprintf("%s%s%s ", colorGreen, txt, colorNone))
+				} else {
+					lineToPrint.WriteString(fmt.Sprintf("%s ", txt))
+				}
 			}
-			fmt.Printf("____?\n\n")
+			lineToPrint.WriteString("____?\n\n")
+
+			fmt.Printf("\n%s\n\n", fixAlignment(lineToPrint.String(), alignmentWidth))
 
 			for j := 0; j < len(nextTokens); j++ {
 				txt := highlights.TokenMap[nextTokens[j]].Content
-				if txt == "" {
-					fmt.Printf("nextTokens[j] = %v\n", nextTokens[j])
-					fmt.Printf("highlights.TokenMap[nextTokens[j]] = %v\n", highlights.TokenMap[nextTokens[j]])
-				}
 				fmt.Printf("  %d. %s\n", (j + 1), txt)
 			}
 			fmt.Printf("  Q. Quit\n")
@@ -119,9 +127,11 @@ func fillCard(highlights HighlightDatabase) {
 		if h.Tokens[i] == selected {
 			fmt.Fprintf(os.Stdout, "%sCORRECT!%s\n", colorGreen, colorNone)
 			correctAnswers = correctAnswers + 1
+			lastI = i
 		} else {
-			fmt.Fprintf(os.Stdout, "%sWRONG: %s%s\n", colorRed, highlights.TokenMap[h.Tokens[i]].Content, colorNone)
+			fmt.Fprintf(os.Stdout, "%sWRONG: %s%s\n", colorRed, highlights.TokenMap[selected].Content, colorNone)
 			wrongAnswers = wrongAnswers + 1
+			i = i - 1
 		}
 	}
 

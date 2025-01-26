@@ -150,6 +150,12 @@ type Pair[K any, V any] struct {
 	Value V
 }
 
+type Tuple3[A any, B any, C any] struct {
+	A A
+	B B
+	C C
+}
+
 func MaxFunc2[E ~[]T, T any](s E, fn func(int, T, int, T) (int, bool)) (int, T) {
 	return MinFunc2(s, func(i int, x T, j int, y T) (int, bool) {
 		cmp, ok := fn(i, x, j, y)
@@ -322,6 +328,12 @@ func Lookup[E ~[]T, T comparable, V any](s E, m map[T]V) []V {
 func Sort[S ~[]E, E cmp.Ordered](x S) []E {
 	result := Clone(x)
 	slices.Sort(result)
+	return result
+}
+
+func SortFunc[S ~[]E, E any](x S, cmp func(a, b E) int) []E {
+	result := Clone(x)
+	slices.SortFunc(result, cmp)
 	return result
 }
 

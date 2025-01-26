@@ -47,24 +47,23 @@ func (db HighlightDatabase) PickHighlight() *Highlight {
 }
 
 func (db HighlightDatabase) WriteScore(fname string) error {
-	var buff bytes.Buffer
+	lines := sliceutils.MapFunc(
+		sliceutils.FilterFunc(db.Highlights, func(h Highlight) bool {
+			return h.Score.Count > 0
+		}), func(h Highlight) string {
+			return fmt.Sprintf("%s %f %d\n", h.ID, h.Score.Sum, h.Score.Count)
+		},
+	)
+	lines = append(lines,
+		sliceutils.MapFunc(
+			maputils.ToEntries(db.UnmatchedScores), func(p sliceutils.Pair[string, Score]) string {
+				return fmt.Sprintf("%s %f %d\n", p.Key, p.Value.Sum, p.Value.Count)
+			},
+		)...,
+	)
+	lines = sliceutils.Sort(lines)
 
-	for _, h := range db.Highlights {
-		if h.Score.Count < 1 {
-			continue
-		}
-
-		buff.WriteString(fmt.Sprintf("%s %f %d\n", h.ID, h.Score.Sum, h.Score.Count))
-	}
-	for id, score := range db.UnmatchedScores {
-		if score.Count < 1 {
-			continue
-		}
-
-		buff.WriteString(fmt.Sprintf("%s %f %d\n", id, score.Sum, score.Count))
-	}
-
-	return os.WriteFile(fname, buff.Bytes(), 0644)
+	return os.WriteFile(fname, []byte(strings.Join(lines, "")), 0644)
 }
 
 type Token struct {
