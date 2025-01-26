@@ -272,6 +272,9 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 
 	highlightIDToIndex := make(map[string]int)
 	for i := 0; i < len(result); i++ {
+		if _, ok := highlightIDToIndex[result[i].ID]; ok {
+			fmt.Println("DUPLICAT ID FOUND!:\n========\n%s\n========\n", result[i].Content)
+		}
 		highlightIDToIndex[result[i].ID] = i
 	}
 
