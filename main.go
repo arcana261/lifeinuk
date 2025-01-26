@@ -61,6 +61,9 @@ func fillCard(highlights HighlightDatabase) {
 		}
 
 		nextTokens := highlights.TokenMap[h.Tokens[i-1]].NominateNextTokens(highlights, puzzleChoiceCount)
+		if len(nextTokens) < 2 {
+			continue
+		}
 		sliceutils.Permutate(nextTokens)
 		if sliceutils.IndexOf(nextTokens, h.Tokens[i]) < 0 {
 			nextTokens = nextTokens[1:]
@@ -81,12 +84,18 @@ func fillCard(highlights HighlightDatabase) {
 		for next < 0 || next >= len(nextTokens) {
 			fmt.Printf("\n> ")
 			for j := 0; j < i; j++ {
-				fmt.Printf("%s ", highlights.TokenMap[h.Tokens[j]].Content)
+				txt := highlights.TokenMap[h.Tokens[j]].Content
+				fmt.Printf("%s ", txt)
 			}
 			fmt.Printf("____?\n\n")
 
 			for j := 0; j < len(nextTokens); j++ {
-				fmt.Printf("  %d. %s\n", (j + 1), highlights.TokenMap[nextTokens[j]].Content)
+				txt := highlights.TokenMap[nextTokens[j]].Content
+				if txt == "" {
+					fmt.Printf("nextTokens[j] = %v\n", nextTokens[j])
+					fmt.Printf("highlights.TokenMap[nextTokens[j]] = %v\n", highlights.TokenMap[nextTokens[j]])
+				}
+				fmt.Printf("  %d. %s\n", (j + 1), txt)
 			}
 			fmt.Printf("  Q. Quit\n")
 			fmt.Printf("\n")

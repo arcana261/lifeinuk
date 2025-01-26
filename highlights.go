@@ -26,10 +26,6 @@ type HighlightDatabase struct {
 }
 
 func (db HighlightDatabase) PickHighlight() *Highlight {
-	if len(db.Highlights) == 0 {
-		return nil
-	}
-
 	items := sliceutils.Range(0, len(db.Highlights))
 	minCount := sliceutils.MinFunc(db.Highlights, func(h1, h2 Highlight) int {
 		return h1.Score.Count - h2.Score.Count
@@ -37,7 +33,10 @@ func (db HighlightDatabase) PickHighlight() *Highlight {
 	items = sliceutils.FilterFunc(items, func(idx int) bool {
 		return db.Highlights[idx].Score.Count == minCount
 	})
-	target := rand.Float64()
+	if len(items) == 0 {
+		return nil
+	}
+	target := rand.Float64() * db.Highlights[items[len(items)-1]].CumulativeProbability
 	at := sliceutils.LowerBoundSortedFunc(items, func(idx int) int {
 		return CompareFloat64(db.Highlights[idx].CumulativeProbability, target)
 	})
@@ -232,6 +231,16 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 			}
 		},
 	)
+	for key, value := range tokenMap {
+		_, ok := resultTokenMap[key]
+		if !ok {
+			resultTokenMap[key] = Token{
+				ID:         key,
+				Content:    value,
+				NextTokens: nil,
+			}
+		}
+	}
 
 	var tokenIDs []int
 	for tokenID, token := range resultTokenMap {
