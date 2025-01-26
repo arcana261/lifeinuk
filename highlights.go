@@ -10,6 +10,9 @@ import (
 	"os"
 	"slices"
 	"strings"
+
+	"github.com/arcana261/lifeinuk/maputils"
+	"github.com/arcana261/lifeinuk/sliceutils"
 )
 
 const (
@@ -27,51 +30,21 @@ func (db HighlightDatabase) PickHighlight() *Highlight {
 		return nil
 	}
 
-	minCount := -1
-	for _, h := range db.Highlights {
-		if minCount < 0 || h.Score.Count < minCount {
-			minCount = h.Score.Count
-		}
+	items := sliceutils.Range(0, len(db.Highlights))
+	minCount := sliceutils.MinFunc(db.Highlights, func(h1, h2 Highlight) int {
+		return h1.Score.Count - h2.Score.Count
+	}).Score.Count
+	items = sliceutils.FilterFunc(items, func(idx int) bool {
+		return db.Highlights[idx].Score.Count == minCount
+	})
+	target := rand.Float64()
+	at := sliceutils.LowerBoundSortedFunc(items, func(idx int) int {
+		return CompareFloat64(db.Highlights[idx].CumulativeProbability, target)
+	})
+	if at < 0 {
+		return nil
 	}
-
-	lo := 0
-	hi := len(db.Highlights) - 1
-	for lo < hi && db.Highlights[lo].Score.Count != minCount {
-		lo = lo + 1
-	}
-	for lo < hi && db.Highlights[hi].Score.Count != minCount {
-		hi = hi - 1
-	}
-	if lo == hi {
-		lo = 0
-		hi = len(db.Highlights) - 1
-	}
-
-	startLo := lo
-	startHi := hi
-
-	var result *Highlight
-
-	for result == nil {
-		target := rand.Float64()
-		lo = startLo
-		hi = startHi
-
-		for lo < hi {
-			mid := (lo + hi) / 2
-			if db.Highlights[mid].CumulativeProbability < target {
-				lo = mid + 1
-			} else if db.Highlights[mid].CumulativeProbability > target {
-				hi = mid
-			}
-		}
-
-		if db.Highlights[lo].Score.Count == minCount {
-			result = &db.Highlights[lo]
-		}
-	}
-
-	return result
+	return &db.Highlights[items[at]]
 }
 
 func (db HighlightDatabase) WriteScore(fname string) error {
@@ -105,22 +78,20 @@ type Token struct {
 
 func (t Token) NominateNextTokens(db HighlightDatabase, count int) []int {
 	var result []int
-	nexts := cloneSlice(t.NextTokens)
-	nexts = removeFunc(nexts, func(nt NextToken) bool {
+	nexts := sliceutils.Clone(t.NextTokens)
+	nexts = sliceutils.RemoveFunc(nexts, func(nt NextToken) bool {
 		return db.TokenMap[nt.ID].SkipPuzzle
 	})
 	for len(result) < count && len(nexts) > 0 {
-		i := lowerBoundFunc(nexts, rand.Float64(), func(nt NextToken, f float64) int {
-			if nt.CumulativeProbability+1e-5 < f {
-				return -1
-			}
-			if nt.CumulativeProbability-1e-5 > f {
-				return 1
-			}
-			return 0
+		target := rand.Float64() * nexts[len(nexts)-1].CumulativeProbability
+		i := sliceutils.LowerBoundSortedFunc(nexts, func(nt NextToken) int {
+			return CompareFloat64(nt.CumulativeProbability, target)
 		})
+		if i < 0 {
+			fmt.Println(nexts)
+		}
 		result = append(result, nexts[i].ID)
-		nexts = removeAt(nexts, i)
+		nexts = sliceutils.RemoveAt(nexts, i)
 	}
 	return result
 }
@@ -182,77 +153,85 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 		return HighlightDatabase{}, err
 	}
 
-	var result []Highlight
-	allTokens := make(map[string]int)
-	tokenMap := make(map[int]string)
-	resultTokenMap := make(map[int]Token)
-
-	nextToken := make(map[int]map[int]int)
-
-	for _, line := range strings.Split(string(bs), "---") {
-		line = strings.TrimSpace(line)
-		tokens := tokenizeString(line)
+	entries := sliceutils.Remove(
+		sliceutils.TrimSpace(
+			strings.Split(string(bs), "---"),
+		), "",
+	)
+	entryTokens := sliceutils.MapFunc(entries, tokenizeString)
+	allTokens := sliceutils.ToMapFunc2(
+		sliceutils.UniqueSorted(
+			sliceutils.Sort(
+				sliceutils.Flatten(entryTokens),
+			),
+		), func(index int, s string) (string, int, bool) {
+			return s, index, true
+		})
+	entryTokensMapped := sliceutils.MapFunc(entryTokens, func(s []string) []int {
+		return sliceutils.Lookup(s, allTokens)
+	})
+	tokenMap := maputils.MapFunc(allTokens, func(t string, id int) (int, string) {
+		return id, t
+	})
+	result := sliceutils.MapFunc2(sliceutils.Zip(entries, entryTokens), func(index int, item sliceutils.Pair[string, []string]) (Highlight, bool) {
+		entry := item.Key
+		tokens := item.Value
 		id := generateID(tokens)
-		var lineTokens []int
 
-		for _, token := range tokens {
-			tokenID, ok := allTokens[token]
-			if !ok {
-				tokenID = len(allTokens)
-				allTokens[token] = tokenID
-				tokenMap[tokenID] = token
-				nextToken[tokenID] = make(map[int]int)
-			}
-			lineTokens = append(lineTokens, tokenID)
-		}
-		for i := 1; i < len(tokens); i++ {
-			prevToken := allTokens[tokens[i-1]]
-			token := allTokens[tokens[i]]
-			nextToken[prevToken][token] = nextToken[prevToken][token] + 1
-		}
-
-		result = append(result, Highlight{
+		return Highlight{
 			ID:      id,
-			Content: strings.TrimSpace(line),
-			Tokens:  lineTokens,
-			Index:   len(result),
-		})
-	}
+			Content: entry,
+			Index:   index,
+			Tokens:  sliceutils.Lookup(tokens, allTokens),
+		}, true
+	})
 
-	for tokenID, tokenContent := range tokenMap {
-		currentNextToken := nextToken[tokenID]
-		total := 0
-		for _, count := range currentNextToken {
-			total = total + count
-		}
+	resultTokenMap := maputils.MapFunc(
+		sliceutils.ToMultiMapFunc(
+			sliceutils.Flatten(
+				sliceutils.MapFunc(entryTokensMapped, func(tokens []int) []sliceutils.Pair[int, int] {
+					if len(tokens) == 0 {
+						return nil
+					}
+					return sliceutils.Zip(tokens, tokens[1:])
+				}),
+			), func(p sliceutils.Pair[int, int]) (int, int) {
+				return p.Key, p.Value
+			},
+		), func(t int, nexts []int) (int, Token) {
+			nextTokens := sliceutils.AccumulateFunc2(
+				sliceutils.MapFunc(
+					maputils.ToEntries(
+						maputils.MapValuesFunc(
+							sliceutils.AccumulateFunc2(nexts, make(map[int]int), func(prev map[int]int, _ int, current int) (map[int]int, bool) {
+								prev[current] = prev[current] + 1
+								return prev, true
+							}), func(count int) float64 {
+								return float64(count) / float64(len(nexts))
+							},
+						),
+					), func(p sliceutils.Pair[int, float64]) NextToken {
+						return NextToken{
+							ID:                    p.Key,
+							CumulativeProbability: p.Value,
+						}
+					},
+				), make([]NextToken, 0), func(prev []NextToken, index int, current NextToken) ([]NextToken, bool) {
+					if index != 0 {
+						current.CumulativeProbability = current.CumulativeProbability + prev[index-1].CumulativeProbability
+					}
+					prev = append(prev, current)
+					return prev, true
+				},
+			)
 
-		var nextTokens []NextToken
-		for nextTokenID, nextTokenCount := range currentNextToken {
-			nextTokens = append(nextTokens, NextToken{
-				ID:                    nextTokenID,
-				CumulativeProbability: float64(nextTokenCount) / float64(total),
-			})
-		}
-		slices.SortFunc(nextTokens, func(left, right NextToken) int {
-			if left.CumulativeProbability < right.CumulativeProbability {
-				return -1
+			return t, Token{
+				ID:         t,
+				Content:    tokenMap[t],
+				NextTokens: nextTokens,
 			}
-			if left.CumulativeProbability > right.CumulativeProbability {
-				return 1
-			}
-			return 0
-		})
-		for i := 1; i < len(nextTokens); i++ {
-			nextTokens[i].CumulativeProbability = nextTokens[i].CumulativeProbability + nextTokens[i-1].CumulativeProbability
-		}
-
-		token := Token{
-			ID:         tokenID,
-			Content:    tokenContent,
-			NextTokens: nextTokens,
-		}
-		resultTokenMap[tokenID] = token
-	}
+		},
+	)
 
 	var tokenIDs []int
 	for tokenID, token := range resultTokenMap {
@@ -370,50 +349,55 @@ func tokenizeString(str string) []string {
 	)
 
 	str = replacer.Replace(str)
-	parts := strings.Split(strings.ToLower(str), " ")
+	str = strings.ToLower(str)
+	parts := strings.Split(str, " ")
+	parts = sliceutils.TrimSpace(parts)
+	parts = sliceutils.Remove(parts, "")
 
-	var result []string
-	for _, part := range parts {
-		part = strings.TrimSpace(part)
-		if part != "" {
-			result = append(result, part)
-		}
-	}
-
-	return result
+	return parts
 }
 
 func readScores(fname string) map[string]Score {
-	result := make(map[string]Score)
+	if !fileExists(fname) {
+		return nil
+	}
 
 	b, err := os.ReadFile(fname)
 	if err != nil {
-		return result
+		panic(err)
 	}
 
-	for _, line := range strings.Split(string(b), "\n") {
-		parts := strings.Split(strings.TrimSpace(line), " ")
-		if len(parts) != 3 {
-			continue
-		}
-		id := strings.TrimSpace(parts[0])
+	lines := strings.Split(string(b), "\n")
+	lines = sliceutils.TrimSpace(lines)
+	parts := sliceutils.Split(lines, " ")
+	parts = sliceutils.FilterFunc(parts, func(s []string) bool { return len(s) == 3 })
+	pairs := sliceutils.MapFunc(parts, func(part []string) sliceutils.Pair[string, Score] {
+		id := strings.TrimSpace(part[0])
 		var totalSum float64
 		var count int
-		n, err := fmt.Sscanf(strings.TrimSpace(parts[1]), "%f", &totalSum)
+		n, err := fmt.Sscanf(strings.TrimSpace(part[1]), "%f", &totalSum)
 		if n != 1 || err != nil {
-			continue
+			return sliceutils.Pair[string, Score]{}
 		}
-		n, err = fmt.Sscanf(strings.TrimSpace(parts[2]), "%d", &count)
+		n, err = fmt.Sscanf(strings.TrimSpace(part[2]), "%d", &count)
 		if n != 1 || err != nil {
-			continue
+			return sliceutils.Pair[string, Score]{}
 		}
 
-		result[id] = Score{
-			Sum:     totalSum,
-			Count:   count,
-			Average: totalSum / (float64(count)*float64(count+1)/float64(2) + 1),
+		return sliceutils.Pair[string, Score]{
+			Key: id,
+			Value: Score{
+				Sum:     totalSum,
+				Count:   count,
+				Average: totalSum / (float64(count)*float64(count+1)/float64(2) + 1),
+			},
 		}
-	}
-
+	})
+	pairs = sliceutils.FilterFunc(pairs, func(p sliceutils.Pair[string, Score]) bool {
+		return p.Key != ""
+	})
+	result := sliceutils.ToMapFunc(pairs, func(p sliceutils.Pair[string, Score]) (string, Score) {
+		return p.Key, p.Value
+	})
 	return result
 }

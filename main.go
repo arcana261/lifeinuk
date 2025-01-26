@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"github.com/arcana261/lifeinuk/sliceutils"
 )
 
 const (
@@ -59,11 +61,11 @@ func fillCard(highlights HighlightDatabase) {
 		}
 
 		nextTokens := highlights.TokenMap[h.Tokens[i-1]].NominateNextTokens(highlights, puzzleChoiceCount)
-		permutateSlice(nextTokens)
-		if findInSlice(nextTokens, h.Tokens[i]) < 0 {
+		sliceutils.Permutate(nextTokens)
+		if sliceutils.IndexOf(nextTokens, h.Tokens[i]) < 0 {
 			nextTokens = nextTokens[1:]
 			nextTokens = append(nextTokens, h.Tokens[i])
-			permutateSlice(nextTokens)
+			sliceutils.Permutate(nextTokens)
 		}
 		if len(nextTokens) < 2 {
 			//var allNextTokens []string
