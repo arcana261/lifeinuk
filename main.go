@@ -135,14 +135,12 @@ func fillCard(highlights HighlightDatabase) {
 		}
 	}
 
-	totalAnswers := correctAnswers + wrongAnswers
-	if totalAnswers > 0 {
-		h.Score.Count = h.Score.Count + 1
+	totalAnswers := max(1, correctAnswers+wrongAnswers)
+	h.Score.Count = h.Score.Count + 1
 
-		score := float64(correctAnswers) / float64(totalAnswers)
-		score = score * float64(h.Score.Count)
-		h.Score.Sum = h.Score.Sum + score
-	}
+	score := float64(correctAnswers) / float64(totalAnswers)
+	score = score * float64(h.Score.Count)
+	h.Score.Sum = h.Score.Sum + score
 
 	fmt.Printf("%s\n", h.Content)
 	if fileExists("scores.txt") {
