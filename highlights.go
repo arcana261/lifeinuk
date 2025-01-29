@@ -333,6 +333,15 @@ func generateID(tokens []string) string {
 func tokenizeString(str string) []string {
 	replacer := strings.NewReplacer(
 		"'s", "s",
+		"0,0", "00",
+		"\u2018s", "s",
+		"\u2019s", "s",
+		"\u2013s", "s",
+		"\"s", "s",
+	)
+	str = replacer.Replace(str)
+
+	replacer = strings.NewReplacer(
 		".", " ",
 		"'", " ",
 		"*", "",
@@ -358,8 +367,8 @@ func tokenizeString(str string) []string {
 		"\u2019", " ",
 		"\u2013", " ",
 	)
-
 	str = replacer.Replace(str)
+
 	str = strings.ToLower(str)
 	parts := strings.Split(str, " ")
 	parts = sliceutils.TrimSpace(parts)
