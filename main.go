@@ -58,7 +58,7 @@ func fillCard(highlights HighlightDatabase) {
 	wrongAnswers := 0
 	lastI := -1
 
-	for i := 1; i < len(h.Tokens); i++ {
+	for i := 2; i < len(h.Tokens); i++ {
 		if highlights.TokenMap[h.Tokens[i]].SkipPuzzle {
 			//fmt.Printf("skipping '%s' due to SkipPuzzle\n", highlights.TokenMap[h.Tokens[i]].Content)
 			continue
