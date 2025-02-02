@@ -21,15 +21,15 @@ const (
 )
 
 func main() {
-	highlights, err := ReadHighlights("highlights.txt", "scores.txt")
+	highlights, err := ReadHighlights("data/highlights.txt", "scores.txt")
 	if err != nil {
 		panic(err)
 	}
 	for i := 0; i < len(highlights.Highlights); i++ {
 		highlights.Highlights[i].Content = fixAlignment(highlights.Highlights[i].Content, alignmentWidth)
 	}
-	copyFile("highlights.txt", "highlights.txt.bak")
-	WriteHighlights(highlights, "highlights.txt")
+	copyFile("data/highlights.txt", "highlights.txt.bak")
+	WriteHighlights(highlights, "data/highlights.txt")
 
 	for {
 		fmt.Printf("\n")

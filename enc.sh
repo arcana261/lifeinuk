@@ -22,6 +22,10 @@ set19='stuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqr'
 set20='tuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrs'
 set21='uvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrst'
 set22='vwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstu'
+set23='wxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv'
+set24='xyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw'
+set25='yz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx'
+set26='z0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxy'
 
 
 # tar cvzO data > data.tar.gz
@@ -45,36 +49,69 @@ while [[ $# > 0 ]]; do
 done
 
 function perform_encode() {
+    local pass1=""
+    local pass2=""
+
+    read -s -p "Password: " pass1
+    echo ""
+    read -s -p "Confirm: " pass2
+    echo ""
+    if [ "$pass1" != "$pass2" ]; then
+        echo "Passwords do not match!!!"
+        exit -1
+    fi
+
     tar cvzO data |
         base64 -w 0 | tr $set1 $set2 | base64 -w 0 | tr $set3 $set4 | gzip -9 | base64 -w 0 | tr $set5 $set6 | \
         base64 -w 0 | tr $set7 $set8 | gzip -8 | base64 -w 0 | tr $set9 $set10 | \
         base64 -w 0 | tr $set11 $set12 | gzip -7 | base64 -w 0 | tr $set13 $set14 | \
         base64 -w 0 | tr $set15 $set16 | gzip -6 | base64 -w 0 | tr $set17 $set18 | \
-        base64 -w 0 | tr $set19 $set20 | gzip -5 | base64 -w 0 | tr $set21 $set22 > data.enc
+        base64 -w 0 | tr $set19 $set20 | gzip -5 | base64 -w 0 | tr $set21 $set22 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass pass:$pass1 | \
+        base64 -w 0 | tr $set23 $set24 | gzip -4 | base64 -w 0 | tr $set25 $set26 \
+        > data.enc
+
+    unset pass1
+    unset pass2
 }
 
 function perform_decode() {
+    local pass1=""
+
+    read -s -p "Password: " pass1
+    echo ""
+
     cat data.enc | \
+        tr $set26 $set25 | base64 -w 0 -d | gunzip | tr $set24 $set23 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass pass:$pass1 | \
         tr $set22 $set21 | base64 -w 0 -d | gunzip | tr $set20 $set19 | base64 -w 0 -d | \
         tr $set18 $set17 | base64 -w 0 -d | gunzip | tr $set16 $set15 | base64 -w 0 -d | \
         tr $set14 $set13 | base64 -w 0 -d | gunzip | tr $set12 $set11 | base64 -w 0 -d | \
         tr $set10 $set9 | base64 -w 0 -d | gunzip | tr $set8 $set7 | base64 -w 0 -d | \
         tr $set6 $set5 | base64 -w 0 -d | gunzip | tr $set4 $set3 | base64 -w 0 -d | tr $set2 $set1 | base64 -w 0 -d | \
         tar xzv
+
+    unset pass1
 }
 
 if [ "$cmd" = "encode" ]; then
     echo '>> encoding...'
     touch data.enc
+    rm -rf data.bak
     cp data.enc data.enc.bak
-    cp data/highlights.txt highlights.txt.bak
     perform_encode
     echo '>> testing...'
+    mv data data.bak
     perform_decode
-    diff data/highlights.txt highlights.txt.bak
+    diff data/highlights.txt data.bak/highlights.txt
+    if [ "$?" != "0" ]; then
+        rm -rf data
+        mv data.bak data
+    fi
 else
     echo '>> decoding...'
-    cp data/highlights.txt highlights.txt.bak
+    rm -rf data.bak
+    mv data data.bak
     perform_decode
     head data/highlights.txt
 fi
