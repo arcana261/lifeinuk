@@ -334,6 +334,12 @@ func tokenizeString(str string) []string {
 	replacer := strings.NewReplacer(
 		"'s", "s",
 		"0,0", "00",
+		"1,0", "10",
+		"2,0", "20",
+		"3,0", "30",
+		"4,0", "40",
+		"5,0", "50",
+		"8,0", "80",
 		"\u2018s", "s",
 		"\u2019s", "s",
 		"\u2013s", "s",
