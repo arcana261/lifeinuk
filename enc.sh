@@ -26,6 +26,14 @@ set23='wxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuv'
 set24='xyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvw'
 set25='yz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwx'
 set26='z0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxy'
+set27='0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz'
+set28='123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0'
+set29='23456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01'
+set30='3456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012'
+set31='456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123'
+set32='56789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234'
+set33='6789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345'
+set34='789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456'
 
 
 # tar cvzO data > data.tar.gz
@@ -49,16 +57,18 @@ while [[ $# > 0 ]]; do
 done
 
 function perform_encode() {
-    local pass1=""
+    local pass1="$1"
     local pass2=""
 
-    read -s -p "Password: " pass1
-    echo ""
-    read -s -p "Confirm: " pass2
-    echo ""
-    if [ "$pass1" != "$pass2" ]; then
-        echo "Passwords do not match!!!"
-        exit -1
+    if [ "$pass1" = "" ]; then
+        read -s -p "Password: " pass1
+        echo ""
+        read -s -p "Confirm: " pass2
+        echo ""
+        if [ "$pass1" != "$pass2" ]; then
+            echo "Passwords do not match!!!"
+            exit -1
+        fi
     fi
 
     tar cvzO data |
@@ -68,7 +78,9 @@ function perform_encode() {
         base64 -w 0 | tr $set15 $set16 | gzip -6 | base64 -w 0 | tr $set17 $set18 | \
         base64 -w 0 | tr $set19 $set20 | gzip -5 | base64 -w 0 | tr $set21 $set22 | \
         openssl aes-256-cbc -salt -pbkdf2 -pass pass:$pass1 | \
-        base64 -w 0 | tr $set23 $set24 | gzip -4 | base64 -w 0 | tr $set25 $set26 \
+        base64 -w 0 | tr $set23 $set24 | gzip -4 | base64 -w 0 | tr $set25 $set26 | \
+        base64 -w 0 | tr $set27 $set28 | gzip -3 | base64 -w 0 | tr $set29 $set30 | \
+        base64 -w 0 | tr $set31 $set32 | gzip -2 | base64 -w 0 | tr $set33 $set34 \
         > data.enc
 
     unset pass1
@@ -76,12 +88,16 @@ function perform_encode() {
 }
 
 function perform_decode() {
-    local pass1=""
+    local pass1="$1"
 
-    read -s -p "Password: " pass1
-    echo ""
+    if [ "$pass1" = "" ]; then
+        read -s -p "Password: " pass1
+        echo ""
+    fi
 
     cat data.enc | \
+        tr $set34 $set33 | base64 -w 0 -d | gunzip | tr $set32 $set31 | base64 -w 0 -d | \
+        tr $set30 $set29 | base64 -w 0 -d | gunzip | tr $set28 $set27 | base64 -w 0 -d | \
         tr $set26 $set25 | base64 -w 0 -d | gunzip | tr $set24 $set23 | base64 -w 0 -d | \
         openssl aes-256-cbc -d -pbkdf2 -pass pass:$pass1 | \
         tr $set22 $set21 | base64 -w 0 -d | gunzip | tr $set20 $set19 | base64 -w 0 -d | \
@@ -99,15 +115,30 @@ if [ "$cmd" = "encode" ]; then
     touch data.enc
     rm -rf data.bak
     cp data.enc data.enc.bak
-    perform_encode
+
+    pass1=""
+    pass2=""
+    read -s -p "Password: " pass1
+    echo ""
+    read -s -p "Confirm: " pass2
+    echo ""
+    if [ "$pass1" != "$pass2" ]; then
+        echo "Passwords do not match!!!"
+        exit -1
+    fi
+
+    perform_encode "$pass1"
     echo '>> testing...'
     mv data data.bak
-    perform_decode
+    perform_decode "$pass1"
     diff data/highlights.txt data.bak/highlights.txt
     if [ "$?" != "0" ]; then
         rm -rf data
         mv data.bak data
     fi
+
+    unset pass1
+    unset pass2
 else
     echo '>> decoding...'
     rm -rf data.bak
