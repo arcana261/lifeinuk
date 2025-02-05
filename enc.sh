@@ -34,6 +34,11 @@ set31='456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123'
 set32='56789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234'
 set33='6789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345'
 set34='789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456'
+set35='89ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz01234567'
+set36='9ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345678'
+set37='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'
+set38='BCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789A'
+set39='CDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789AB'
 
 
 # tar cvzO data > data.tar.gz
@@ -72,15 +77,25 @@ function perform_encode() {
     fi
 
     tar cvzO data |
-        base64 -w 0 | tr $set1 $set2 | base64 -w 0 | tr $set3 $set4 | gzip -9 | base64 -w 0 | tr $set5 $set6 | \
-        base64 -w 0 | tr $set7 $set8 | gzip -8 | base64 -w 0 | tr $set9 $set10 | \
-        base64 -w 0 | tr $set11 $set12 | gzip -7 | base64 -w 0 | tr $set13 $set14 | \
-        base64 -w 0 | tr $set15 $set16 | gzip -6 | base64 -w 0 | tr $set17 $set18 | \
-        base64 -w 0 | tr $set19 $set20 | gzip -5 | base64 -w 0 | tr $set21 $set22 | \
-        openssl aes-256-cbc -salt -pbkdf2 -pass pass:$pass1 | \
-        base64 -w 0 | tr $set23 $set24 | gzip -4 | base64 -w 0 | tr $set25 $set26 | \
-        base64 -w 0 | tr $set27 $set28 | gzip -3 | base64 -w 0 | tr $set29 $set30 | \
-        base64 -w 0 | tr $set31 $set32 | gzip -2 | base64 -w 0 | tr $set33 $set34 \
+        base64 -w 0 | tr $set1 $set2 | gzip -9 | base64 -w 0 | tr $set3 $set4 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set5 $set6 | gzip -8 | base64 -w 0 | tr $set7 $set8 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set9 $set10 | gzip -7 | base64 -w 0 | tr $set11 $set12 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set13 $set14 | gzip -6 | base64 -w 0 | tr $set15 $set16 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set17 $set18 | gzip -5 | base64 -w 0 | tr $set19 $set20 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set21 $set22 | gzip -4 | base64 -w 0 | tr $set23 $set24 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set24 $set25 | gzip -3 | base64 -w 0 | tr $set26 $set27 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set28 $set29 | gzip -2 | base64 -w 0 | tr $set30 $set31 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set32 $set33 | gzip -1 | base64 -w 0 | tr $set34 $set35 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set36 $set37 | gzip -2 | base64 -w 0 | tr $set38 $set39 \
         > data.enc
 
     unset pass1
@@ -96,15 +111,25 @@ function perform_decode() {
     fi
 
     cat data.enc | \
-        tr $set34 $set33 | base64 -w 0 -d | gunzip | tr $set32 $set31 | base64 -w 0 -d | \
-        tr $set30 $set29 | base64 -w 0 -d | gunzip | tr $set28 $set27 | base64 -w 0 -d | \
-        tr $set26 $set25 | base64 -w 0 -d | gunzip | tr $set24 $set23 | base64 -w 0 -d | \
-        openssl aes-256-cbc -d -pbkdf2 -pass pass:$pass1 | \
-        tr $set22 $set21 | base64 -w 0 -d | gunzip | tr $set20 $set19 | base64 -w 0 -d | \
-        tr $set18 $set17 | base64 -w 0 -d | gunzip | tr $set16 $set15 | base64 -w 0 -d | \
-        tr $set14 $set13 | base64 -w 0 -d | gunzip | tr $set12 $set11 | base64 -w 0 -d | \
-        tr $set10 $set9 | base64 -w 0 -d | gunzip | tr $set8 $set7 | base64 -w 0 -d | \
-        tr $set6 $set5 | base64 -w 0 -d | gunzip | tr $set4 $set3 | base64 -w 0 -d | tr $set2 $set1 | base64 -w 0 -d | \
+        tr $set39 $set38 | base64 -w 0 -d | gunzip | tr $set37 $set36 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
+        tr $set35 $set34 | base64 -w 0 -d | gunzip | tr $set33 $set32 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
+        tr $set31 $set30 | base64 -w 0 -d | gunzip | tr $set29 $set28 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
+        tr $set27 $set26 | base64 -w 0 -d | gunzip | tr $set25 $set24 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
+        tr $set23 $set22 | base64 -w 0 -d | gunzip | tr $set21 $set20 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
+        tr $set19 $set18 | base64 -w 0 -d | gunzip | tr $set17 $set16 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
+        tr $set15 $set14 | base64 -w 0 -d | gunzip | tr $set13 $set12 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
+        tr $set11 $set10 | base64 -w 0 -d | gunzip | tr $set9 $set8 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
+        tr $set7 $set6 | base64 -w 0 -d | gunzip | tr $set5 $set4 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
+        tr $set3 $set2 | base64 -w 0 -d | gunzip | tr $set2 $set1 | base64 -w 0 -d | \
         tar xzv
 
     unset pass1
