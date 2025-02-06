@@ -45,9 +45,6 @@ set42='FGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDE'
 set43='GHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEF'
 set44='HIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFG'
 
-
-# tar cvzO data > data.tar.gz
-
 cmd='encode'
 
 while [[ $# > 0 ]]; do
@@ -176,6 +173,7 @@ if [ "$cmd" = "encode" ]; then
 else
     echo '>> decoding...'
     rm -rf data.bak
+    mkdir -p data
     mv data data.bak
     perform_decode
     head data/highlights.txt
