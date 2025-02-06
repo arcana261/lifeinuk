@@ -44,6 +44,10 @@ set41='EFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCD'
 set42='FGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDE'
 set43='GHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEF'
 set44='HIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFG'
+set45='IJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGH'
+set46='JKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHI'
+set47='KLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJ'
+set48='LMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJK'
 
 cmd='encode'
 
@@ -99,8 +103,10 @@ function perform_encode() {
         openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
         base64 -w 0 | tr $set37 $set38 | gzip -9 | base64 -w 0 | tr $set39 $set40 | \
         openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
-        base64 -w 0 | tr $set41 $set42 | gzip -9 | base64 -w 0 | tr $set43 $set44 \
-        > data.enc
+        base64 -w 0 | tr $set41 $set42 | gzip -9 | base64 -w 0 | tr $set43 $set44 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set45 $set46 | gzip -9 | base64 -w 0 | tr $set47 $set48 | \
+        tr '0' '\n' > data.enc
 
     unset pass1
     unset pass2
@@ -115,7 +121,10 @@ function perform_decode() {
     fi
 
     cat data.enc | \
-        tr $set43 $set42 | base64 -w 0 -d | gunzip | tr $set41 $set40 | base64 -w 0 -d | \
+        tr '\n' '0' | \
+        tr $set48 $set47 | base64 -w 0 -d | gunzip | tr $set46 $set45 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
+        tr $set44 $set43 | base64 -w 0 -d | gunzip | tr $set42 $set41 | base64 -w 0 -d | \
         openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
         tr $set40 $set39 | base64 -w 0 -d | gunzip | tr $set38 $set37 | base64 -w 0 -d | \
         openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
