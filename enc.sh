@@ -82,7 +82,7 @@ function perform_encode() {
         fi
     fi
 
-    tar cvzO data |
+    tar cvzO data | xz -9e | \
         base64 -w 0 | tr $set1 $set2 | gzip -9 | base64 -w 0 | tr $set3 $set4 | \
         openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
         base64 -w 0 | tr $set5 $set6 | gzip -9 | base64 -w 0 | tr $set7 $set8 | \
@@ -145,7 +145,7 @@ function perform_decode() {
         tr $set8 $set7 | base64 -w 0 -d | gunzip | tr $set6 $set5 | base64 -w 0 -d | \
         openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
         tr $set4 $set3 | base64 -w 0 -d | gunzip | tr $set2 $set1 | base64 -w 0 -d | \
-        tar xzv
+        xz -d | tar xzv
 
     unset pass1
 }
