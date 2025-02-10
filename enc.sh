@@ -60,6 +60,10 @@ set57='UVWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRST'
 set58='VWXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTU'
 set59='WXYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUV'
 set60='XYZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVW'
+set61='YZabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWX'
+set62='Zabcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXY'
+set63='abcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+set64='bcdefghijklmnopqrstuvwxyz0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZa'
 
 cmd='encode'
 
@@ -124,6 +128,8 @@ function perform_encode() {
         base64 -w 0 | tr $set53 $set54 | gzip -9 | base64 -w 0 | tr $set55 $set56 | \
         openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
         base64 -w 0 | tr $set57 $set58 | gzip -9 | base64 -w 0 | tr $set59 $set60 | \
+        openssl aes-256-cbc -salt -pbkdf2 -pass "pass:$pass1" | \
+        base64 -w 0 | tr $set61 $set62 | gzip -9 | base64 -w 0 | tr $set63 $set64 | \
         tr '0' '\n' > data.enc
 
     unset pass1
@@ -140,6 +146,8 @@ function perform_decode() {
 
     cat data.enc | \
         tr '\n' '0' | \
+        tr $set64 $set63 | base64 -w 0 -d | gunzip | tr $set62 $set61 | base64 -w 0 -d | \
+        openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
         tr $set60 $set59 | base64 -w 0 -d | gunzip | tr $set58 $set57 | base64 -w 0 -d | \
         openssl aes-256-cbc -d -pbkdf2 -pass "pass:$pass1" | \
         tr $set56 $set55 | base64 -w 0 -d | gunzip | tr $set54 $set53 | base64 -w 0 -d | \
