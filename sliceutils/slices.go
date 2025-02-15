@@ -120,6 +120,18 @@ func IndexOf[E ~[]T, T cmp.Ordered](s E, value T) int {
 	})
 }
 
+func ContainsFunc2[E ~[]T, T any](s E, fn func(int, T) (bool, bool)) bool {
+	return IndexOfFunc2(s, fn) >= 0
+}
+
+func ContainsFunc[E ~[]T, T any](s E, fn func(T) bool) bool {
+	return IndexOfFunc(s, fn) >= 0
+}
+
+func Contains[E ~[]T, T cmp.Ordered](s E, value T) bool {
+	return IndexOf(s, value) >= 0
+}
+
 func RemoveFunc2[E ~[]T, T any](s E, fn func(int, T) (bool, bool)) []T {
 	return FilterFunc2(s, func(i int, t T) (bool, bool) {
 		cmp, ok := fn(i, t)

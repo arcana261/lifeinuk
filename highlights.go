@@ -74,11 +74,11 @@ type Token struct {
 	SkipPuzzle        bool
 }
 
-func (t Token) NominateNextTokens(db HighlightDatabase, count int) []int {
+func (t Token) NominateNextTokens(db HighlightDatabase, count int, skip ...string) []int {
 	var result []int
 	nexts := sliceutils.Clone(t.NextTokens)
 	nexts = sliceutils.RemoveFunc(nexts, func(nt NextToken) bool {
-		return db.TokenMap[nt.ID].SkipPuzzle
+		return db.TokenMap[nt.ID].SkipPuzzle || sliceutils.Contains(skip, db.TokenMap[nt.ID].Content)
 	})
 	for len(result) < count && len(nexts) > 0 {
 		target := rand.Float64() * nexts[len(nexts)-1].CumulativeProbability

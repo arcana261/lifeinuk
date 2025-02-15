@@ -59,29 +59,36 @@ func fillCard(highlights HighlightDatabase) {
 	lastI := -1
 
 	for i := 2; i < len(h.Tokens); i++ {
-		if highlights.TokenMap[h.Tokens[i]].SkipPuzzle {
-			//fmt.Printf("skipping '%s' due to SkipPuzzle\n", highlights.TokenMap[h.Tokens[i]].Content)
+		currentToken := highlights.TokenMap[h.Tokens[i]]
+
+		if currentToken.SkipPuzzle {
 			continue
 		}
 
-		nextTokens := highlights.TokenMap[h.Tokens[i-1]].NominateNextTokens(highlights, puzzleChoiceCount)
-		if len(nextTokens) < 2 {
+		var skips []string
+		skips = append(skips, currentToken.Content)
+		if strings.HasSuffix(currentToken.Content, "ies") {
+			skips = append(skips, currentToken.Content[:len(currentToken.Content)-3])
+		} else if strings.HasSuffix(currentToken.Content, "y") {
+			skips = append(skips, fmt.Sprintf("%sies", currentToken.Content[:len(currentToken.Content)-1]))
+		}
+
+		if strings.HasSuffix(currentToken.Content, "s") {
+			skips = append(skips, currentToken.Content[:len(currentToken.Content)-1])
+		} else {
+			skips = append(skips, fmt.Sprintf("%ss", currentToken.Content))
+		}
+
+		nextTokens := highlights.TokenMap[h.Tokens[i-1]].NominateNextTokens(
+			highlights,
+			puzzleChoiceCount-1,
+			skips...,
+		)
+		if len(nextTokens) < 1 {
 			continue
 		}
+		nextTokens = append(nextTokens, h.Tokens[i])
 		sliceutils.Permutate(nextTokens)
-		if sliceutils.IndexOf(nextTokens, h.Tokens[i]) < 0 {
-			nextTokens = nextTokens[1:]
-			nextTokens = append(nextTokens, h.Tokens[i])
-			sliceutils.Permutate(nextTokens)
-		}
-		if len(nextTokens) < 2 {
-			//var allNextTokens []string
-			//for _, nt := range highlights.TokenMap[h.Tokens[i-1]].NextTokens {
-			//allNextTokens = append(allNextTokens, highlights.TokenMap[nt.ID].Content)
-			//}
-			//fmt.Printf("skipping '%s' due to len(nextTokens)<2 [case 1][%s]\n", highlights.TokenMap[h.Tokens[i]].Content, strings.Join(allNextTokens, ","))
-			continue
-		}
 
 		next := -1
 
