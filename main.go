@@ -75,6 +75,7 @@ func fillCard(highlights HighlightDatabase) {
 
 		if strings.HasSuffix(currentToken.Content, "ies") {
 			skips = append(skips, currentToken.Content[:len(currentToken.Content)-3])
+			skips = append(skips, fmt.Sprintf("%sy", currentToken.Content[:len(currentToken.Content)-3]))
 		} else if strings.HasSuffix(currentToken.Content, "y") {
 			skips = append(skips, fmt.Sprintf("%sies", currentToken.Content[:len(currentToken.Content)-1]))
 		}
@@ -156,7 +157,8 @@ func fillCard(highlights HighlightDatabase) {
 			for j := 0; j < len(nextTokens); j++ {
 				txt := highlights.TokenMap[nextTokens[j]].RealContent
 				if len(txt) > 0 {
-					txt = fmt.Sprintf("%s%s", strings.ToUpper(txt[:1]), txt[1:])
+					rtxt := []rune(txt)
+					txt = fmt.Sprintf("%s%s", strings.ToUpper(string(rtxt[:1])), string(rtxt[1:]))
 				}
 				fmt.Printf("  %d. %s\n", (j + 1), txt)
 			}

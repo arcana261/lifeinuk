@@ -428,6 +428,7 @@ func tokenizeString2(str string) []ParsedToken {
 	var current []rune
 	var tokenStart int
 	isNumber := true
+	isURL := false
 
 	for i := 0; i < len(input); i++ {
 		r := input[i]
@@ -504,11 +505,29 @@ func tokenizeString2(str string) []ParsedToken {
 			if isNumber && len(tokens) > 0 && (tokens[len(tokens)-1].Content == "ad" || tokens[len(tokens)-1].Content == "bc") {
 				last := tokens[len(tokens)-1]
 				tokens[len(tokens)-1] = ParsedToken{
-					Content:     fmt.Sprintf("%s %s", strings.ToLower(string(current)), last.Content),
+					Content:     fmt.Sprintf("%s %s", last.Content, strings.ToLower(string(current))),
 					Start:       last.Start,
 					End:         i,
 					RealContent: string(input[last.Start:i]),
 				}
+				isURL = false
+			} else if tokenStart > 0 && input[tokenStart-1] == '.' && isURL {
+				last := tokens[len(tokens)-1]
+				tokens[len(tokens)-1] = ParsedToken{
+					Content:     fmt.Sprintf("%s.%s", last.Content, strings.ToLower(string(current))),
+					Start:       last.Start,
+					End:         i,
+					RealContent: string(input[last.Start:i]),
+				}
+			} else if len(current) == 1 && (current[0] == 't' || current[0] == 'T') && tokenStart > 0 && input[tokenStart-1] == '\'' && len(tokens) > 0 && tokens[len(tokens)-1].Content == "don" {
+				last := tokens[len(tokens)-1]
+				tokens[len(tokens)-1] = ParsedToken{
+					Content:     fmt.Sprintf("%s'%s", last.Content, strings.ToLower(string(current))),
+					Start:       last.Start,
+					End:         i,
+					RealContent: string(input[last.Start:i]),
+				}
+				isURL = false
 			} else {
 				tokens = append(tokens, ParsedToken{
 					Content:     strings.ToLower(string(current)),
@@ -516,6 +535,7 @@ func tokenizeString2(str string) []ParsedToken {
 					End:         i,
 					RealContent: string(input[tokenStart:i]),
 				})
+				isURL = tokens[len(tokens)-1].RealContent == "www"
 			}
 
 			current = nil
@@ -541,10 +561,9 @@ func tokenizeString2(str string) []ParsedToken {
 		})
 	}
 
-	/*
-		for _, item := range tokens {
-			fmt.Printf("%s | %s\n", item.Content, item.RealContent)
-		}*/
+	/*for _, item := range tokens {
+		fmt.Printf("%s | %s\n", item.Content, item.RealContent)
+	}*/
 
 	return tokens
 }
