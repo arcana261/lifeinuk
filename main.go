@@ -16,7 +16,7 @@ const (
 	colorBlue   = "\033[0;34m"
 	colorNone   = "\033[0m"
 
-	alignmentWidth    = 50
+	alignmentWidth    = 60
 	puzzleChoiceCount = 4
 )
 
@@ -53,6 +53,7 @@ func main() {
 
 func fillCard(highlights HighlightDatabase) {
 	h := highlights.PickHighlight()
+	hContent := []rune(h.Content)
 
 	correctAnswers := 0
 	wrongAnswers := 0
@@ -114,13 +115,13 @@ func fillCard(highlights HighlightDatabase) {
 				}*/
 
 			if lastI > 0 {
-				lineToPrint.WriteString(h.Content[:h.TokenStarts[lastI]])
+				lineToPrint.WriteString(string(hContent[:h.TokenStarts[lastI]]))
 				lineToPrint.WriteString(colorGreen)
-				lineToPrint.WriteString(h.Content[h.TokenStarts[lastI]:h.TokenStarts[lastI+1]])
+				lineToPrint.WriteString(string(hContent[h.TokenStarts[lastI]:h.TokenStarts[lastI+1]]))
 				lineToPrint.WriteString(colorNone)
-				lineToPrint.WriteString(h.Content[h.TokenStarts[lastI+1]:h.TokenStarts[i]])
+				lineToPrint.WriteString(string(hContent[h.TokenStarts[lastI+1]:h.TokenStarts[i]]))
 			} else {
-				lineToPrint.WriteString(h.Content[:h.TokenStarts[i]])
+				lineToPrint.WriteString(string(hContent[:h.TokenStarts[i]]))
 			}
 			lineToPrint.WriteString(fmt.Sprintf(" %s____?%s", colorYellow, colorNone))
 
@@ -185,16 +186,16 @@ func fillCard(highlights HighlightDatabase) {
 	if lastI > 0 {
 		var lineToPrint bytes.Buffer
 
-		lineToPrint.WriteString(h.Content[:h.TokenStarts[lastI]])
+		lineToPrint.WriteString(string(hContent[:h.TokenStarts[lastI]]))
 		lineToPrint.WriteString(colorGreen)
 		if lastI+1 < len(h.TokenStarts) {
-			lineToPrint.WriteString(h.Content[h.TokenStarts[lastI]:h.TokenStarts[lastI+1]])
+			lineToPrint.WriteString(string(hContent[h.TokenStarts[lastI]:h.TokenStarts[lastI+1]]))
 		} else {
-			lineToPrint.WriteString(h.Content[h.TokenStarts[lastI]:])
+			lineToPrint.WriteString(string(hContent[h.TokenStarts[lastI]:]))
 		}
 		lineToPrint.WriteString(colorNone)
 		if lastI+1 < len(h.TokenStarts) {
-			lineToPrint.WriteString(h.Content[h.TokenStarts[lastI+1]:])
+			lineToPrint.WriteString(string(hContent[h.TokenStarts[lastI+1]:]))
 		}
 
 		replacer := strings.NewReplacer(
