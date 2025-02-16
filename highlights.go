@@ -511,7 +511,7 @@ func tokenizeString2(str string) []ParsedToken {
 					RealContent: string(input[last.Start:i]),
 				}
 				isURL = false
-			} else if tokenStart > 0 && input[tokenStart-1] == '.' && isURL {
+			} else if tokenStart > 0 && (input[tokenStart-1] == '.' || input[tokenStart-1] == '/' || input[tokenStart-1] == '-' || input[tokenStart-1] == ':') && isURL {
 				last := tokens[len(tokens)-1]
 				tokens[len(tokens)-1] = ParsedToken{
 					Content:     fmt.Sprintf("%s.%s", last.Content, strings.ToLower(string(current))),
@@ -528,6 +528,15 @@ func tokenizeString2(str string) []ParsedToken {
 					RealContent: string(input[last.Start:i]),
 				}
 				isURL = false
+			} else if (strings.ToLower(string(current)) == "ve" || strings.ToLower(string(current)) == "ll") && tokenStart > 0 && input[tokenStart-1] == '\'' && len(tokens) > 0 && tokens[len(tokens)-1].Content == "you" {
+				last := tokens[len(tokens)-1]
+				tokens[len(tokens)-1] = ParsedToken{
+					Content:     fmt.Sprintf("%s'%s", last.Content, strings.ToLower(string(current))),
+					Start:       last.Start,
+					End:         i,
+					RealContent: string(input[last.Start:i]),
+				}
+				isURL = false
 			} else {
 				tokens = append(tokens, ParsedToken{
 					Content:     strings.ToLower(string(current)),
@@ -535,7 +544,7 @@ func tokenizeString2(str string) []ParsedToken {
 					End:         i,
 					RealContent: string(input[tokenStart:i]),
 				})
-				isURL = tokens[len(tokens)-1].RealContent == "www"
+				isURL = tokens[len(tokens)-1].RealContent == "www" || tokens[len(tokens)-1].RealContent == "http" || tokens[len(tokens)-1].RealContent == "https"
 			}
 
 			current = nil
