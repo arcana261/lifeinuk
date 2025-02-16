@@ -134,7 +134,6 @@ func fillCard(highlights HighlightDatabase) {
 			fmt.Printf("\n%s\n\n", content)
 
 			for j := 0; j < len(nextTokens); j++ {
-				//txt := highlights.TokenMap[nextTokens[j]].Content
 				txt := highlights.TokenMap[nextTokens[j]].RealContent
 				if len(txt) > 0 {
 					txt = fmt.Sprintf("%s%s", strings.ToUpper(txt[:1]), txt[1:])
@@ -165,7 +164,12 @@ func fillCard(highlights HighlightDatabase) {
 			correctAnswers = correctAnswers + 1
 			lastI = i
 		} else {
-			fmt.Fprintf(os.Stdout, "%sWRONG: %s%s\n", colorRed, highlights.TokenMap[selected].Content, colorNone)
+			txt := highlights.TokenMap[selected].RealContent
+			if len(txt) > 0 {
+				txt = fmt.Sprintf("%s%s", strings.ToUpper(txt[:1]), txt[1:])
+			}
+
+			fmt.Fprintf(os.Stdout, "%sWRONG: %s%s\n", colorRed, txt, colorNone)
 			wrongAnswers = wrongAnswers + 1
 			i = i - 1
 		}
@@ -183,9 +187,15 @@ func fillCard(highlights HighlightDatabase) {
 
 		lineToPrint.WriteString(h.Content[:h.TokenStarts[lastI]])
 		lineToPrint.WriteString(colorGreen)
-		lineToPrint.WriteString(h.Content[h.TokenStarts[lastI]:h.TokenStarts[lastI+1]])
+		if lastI+1 < len(h.TokenStarts) {
+			lineToPrint.WriteString(h.Content[h.TokenStarts[lastI]:h.TokenStarts[lastI+1]])
+		} else {
+			lineToPrint.WriteString(h.Content[h.TokenStarts[lastI]:])
+		}
 		lineToPrint.WriteString(colorNone)
-		lineToPrint.WriteString(h.Content[h.TokenStarts[lastI+1]:])
+		if lastI+1 < len(h.TokenStarts) {
+			lineToPrint.WriteString(h.Content[h.TokenStarts[lastI+1]:])
+		}
 
 		replacer := strings.NewReplacer(
 			"\n", " ",

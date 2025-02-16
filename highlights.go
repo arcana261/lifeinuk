@@ -262,9 +262,10 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 		_, ok := resultTokenMap[key]
 		if !ok {
 			resultTokenMap[key] = Token{
-				ID:         key,
-				Content:    value,
-				NextTokens: nil,
+				ID:          key,
+				Content:     value,
+				RealContent: tokenToReal[value],
+				NextTokens:  nil,
 			}
 		}
 	}
@@ -468,9 +469,10 @@ func tokenizeString2(str string) []ParsedToken {
 
 	/*
 		for _, item := range tokens {
-			fmt.Printf("%s | %s\n", item.Content, item.RealContent)
-		}
-	*/
+			if strings.TrimSpace(item.Content) == "" {
+				fmt.Printf("%s | %s\n", item.Content, item.RealContent)
+			}
+		}*/
 
 	return tokens
 }
