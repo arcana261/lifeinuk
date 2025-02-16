@@ -367,6 +367,12 @@ type ParsedToken struct {
 }
 
 func tokenizeString2(str string) []ParsedToken {
+	whitespace := map[rune]bool{
+		' ':  true,
+		'\t': true,
+		'\r': true,
+		'\n': true,
+	}
 	seperators := map[rune]bool{
 		'.':      true,
 		'"':      true,
@@ -421,6 +427,7 @@ func tokenizeString2(str string) []ParsedToken {
 	var tokens []ParsedToken
 	var current []rune
 	var tokenStart int
+	isNumber := true
 
 	for i := 0; i < len(input); i++ {
 		r := input[i]
@@ -433,7 +440,7 @@ func tokenizeString2(str string) []ParsedToken {
 			i = i + 1
 			continue
 		}
-		if (r == ',' || r == '.') && len(current) > 0 && digits[current[len(current)-1]] && i+1 < len(input) && digits[input[i+1]] {
+		if (r == ',' || r == '.' || r == ':') && len(current) > 0 && digits[current[len(current)-1]] && i+1 < len(input) && digits[input[i+1]] {
 			continue
 		}
 		if r == '*' {
@@ -441,19 +448,86 @@ func tokenizeString2(str string) []ParsedToken {
 		}
 
 		if seperators[r] {
-			tokens = append(tokens, ParsedToken{
-				Content:     strings.ToLower(string(current)),
-				Start:       tokenStart,
-				End:         i,
-				RealContent: string(input[tokenStart:i]),
-			})
+
+			if isNumber {
+				j := i
+				for j < len(input) && whitespace[input[j]] {
+					j = j + 1
+				}
+
+				if j+1 < len(input) {
+					isP := false
+					isA := false
+					isM := false
+					isB := false
+					isC := false
+					isD := false
+					switch input[j] {
+					case 'p':
+						isP = true
+					case 'P':
+						isP = true
+					case 'a':
+						isA = true
+					case 'A':
+						isA = true
+					case 'b':
+						isB = true
+					case 'B':
+						isB = true
+					default:
+					}
+					switch input[j+1] {
+					case 'm':
+						isM = true
+					case 'M':
+						isM = true
+					case 'd':
+						isD = true
+					case 'D':
+						isD = true
+					case 'c':
+						isC = true
+					case 'C':
+						isC = true
+					default:
+					}
+
+					if (isA && isM) || (isB && isC) || (isP && isM) || (isA && isD) {
+						i = j + 2
+						current = append(current, input[j])
+						current = append(current, input[j+1])
+					}
+				}
+			}
+
+			if isNumber && len(tokens) > 0 && (tokens[len(tokens)-1].Content == "ad" || tokens[len(tokens)-1].Content == "bc") {
+				last := tokens[len(tokens)-1]
+				tokens[len(tokens)-1] = ParsedToken{
+					Content:     fmt.Sprintf("%s %s", strings.ToLower(string(current)), last.Content),
+					Start:       last.Start,
+					End:         i,
+					RealContent: string(input[last.Start:i]),
+				}
+			} else {
+				tokens = append(tokens, ParsedToken{
+					Content:     strings.ToLower(string(current)),
+					Start:       tokenStart,
+					End:         i,
+					RealContent: string(input[tokenStart:i]),
+				})
+			}
 
 			current = nil
+			isNumber = true
 			continue
 		}
 
 		if len(current) == 0 {
 			tokenStart = i
+		}
+		if !digits[r] && r != '.' && r != '-' && r != '+' && r != '%' && r != ',' && r != ':' {
+			isNumber = false
 		}
 		current = append(current, r)
 	}
@@ -469,9 +543,7 @@ func tokenizeString2(str string) []ParsedToken {
 
 	/*
 		for _, item := range tokens {
-			if strings.TrimSpace(item.Content) == "" {
-				fmt.Printf("%s | %s\n", item.Content, item.RealContent)
-			}
+			fmt.Printf("%s | %s\n", item.Content, item.RealContent)
 		}*/
 
 	return tokens

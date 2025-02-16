@@ -138,9 +138,9 @@ func fillCard(highlights HighlightDatabase) {
 				lineToPrint.WriteString(colorGreen)
 				lineToPrint.WriteString(string(hContent[h.TokenStarts[lastI]:h.TokenStarts[lastI+1]]))
 				lineToPrint.WriteString(colorNone)
-				lineToPrint.WriteString(string(hContent[h.TokenStarts[lastI+1]:h.TokenStarts[i]]))
+				lineToPrint.WriteString(strings.TrimSuffix(string(hContent[h.TokenStarts[lastI+1]:h.TokenStarts[i]]), " "))
 			} else {
-				lineToPrint.WriteString(string(hContent[:h.TokenStarts[i]]))
+				lineToPrint.WriteString(strings.TrimSuffix(string(hContent[:h.TokenStarts[i]]), " "))
 			}
 			lineToPrint.WriteString(fmt.Sprintf(" %s____?%s", colorYellow, colorNone))
 

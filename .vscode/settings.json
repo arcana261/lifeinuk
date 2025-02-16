@@ -1,4 +1,6 @@
 {
+    "go.gopath": "/home/arcana/.gvm/pkgsets/go1.23.6/global",
+    "go.goroot": "/home/arcana/.gvm/gos/go1.23.6",
     "files.exclude": {
         "**/.git": true,
         "**/.svn": true,
