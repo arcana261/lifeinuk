@@ -69,6 +69,7 @@ func (db HighlightDatabase) WriteScore(fname string) error {
 type Token struct {
 	ID                int
 	Content           string
+	RealContent       string
 	NextTokens        []NextToken
 	AppearInNextToken int
 	SkipPuzzle        bool
@@ -103,6 +104,8 @@ type Highlight struct {
 	ID                    string
 	Content               string
 	Tokens                []int
+	TokenStarts           []int
+	TokenEnds             []int
 	Score                 Score
 	CumulativeProbability float64
 	Index                 int
@@ -156,24 +159,42 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 			strings.Split(string(bs), "---"),
 		), "",
 	)
-	entryTokens := sliceutils.MapFunc(entries, tokenizeString)
+	entryTokens := sliceutils.MapFunc(entries, tokenizeString2)
 	allTokens := sliceutils.ToMapFunc2(
 		sliceutils.UniqueSorted(
 			sliceutils.Sort(
-				sliceutils.Flatten(entryTokens),
+				sliceutils.MapFunc(
+					sliceutils.Flatten(entryTokens),
+					func(x ParsedToken) string {
+						return x.Content
+					},
+				),
 			),
 		), func(index int, s string) (string, int, bool) {
 			return s, index, true
 		})
-	entryTokensMapped := sliceutils.MapFunc(entryTokens, func(s []string) []int {
-		return sliceutils.Lookup(s, allTokens)
-	})
+	tokenToReal := sliceutils.ToMapFunc(
+		sliceutils.Flatten(entryTokens),
+		func(x ParsedToken) (string, string) {
+			return x.Content, x.RealContent
+		},
+	)
 	tokenMap := maputils.MapFunc(allTokens, func(t string, id int) (int, string) {
 		return id, t
 	})
-	result := sliceutils.MapFunc2(sliceutils.Zip(entries, entryTokens), func(index int, item sliceutils.Pair[string, []string]) (Highlight, bool) {
+	entryTokensMapped := sliceutils.MapFunc(entryTokens, func(s []ParsedToken) []int {
+		return sliceutils.Lookup(
+			sliceutils.MapFunc(s, func(x ParsedToken) string {
+				return x.Content
+			}),
+			allTokens,
+		)
+	})
+	result := sliceutils.MapFunc2(sliceutils.Zip(entries, entryTokens), func(index int, item sliceutils.Pair[string, []ParsedToken]) (Highlight, bool) {
 		entry := item.Key
-		tokens := item.Value
+		tokens := sliceutils.MapFunc(item.Value, func(x ParsedToken) string {
+			return x.Content
+		})
 		id := generateID(tokens)
 
 		return Highlight{
@@ -181,6 +202,12 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 			Content: entry,
 			Index:   index,
 			Tokens:  sliceutils.Lookup(tokens, allTokens),
+			TokenStarts: sliceutils.MapFunc(item.Value, func(x ParsedToken) int {
+				return x.Start
+			}),
+			TokenEnds: sliceutils.MapFunc(item.Value, func(x ParsedToken) int {
+				return x.End
+			}),
 		}, true
 	})
 
@@ -224,9 +251,10 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 			)
 
 			return t, Token{
-				ID:         t,
-				Content:    tokenMap[t],
-				NextTokens: nextTokens,
+				ID:          t,
+				Content:     tokenMap[t],
+				NextTokens:  nextTokens,
+				RealContent: tokenToReal[tokenMap[t]],
 			}
 		},
 	)
@@ -273,7 +301,7 @@ func ReadHighlights(fname string, scores string) (HighlightDatabase, error) {
 	highlightIDToIndex := make(map[string]int)
 	for i := 0; i < len(result); i++ {
 		if _, ok := highlightIDToIndex[result[i].ID]; ok {
-			fmt.Println("DUPLICAT ID FOUND!:\n========\n%s\n========\n", result[i].Content)
+			fmt.Printf("DUPLICAT ID FOUND!:\n========\n%s\n========\n", result[i].Content)
 		}
 		highlightIDToIndex[result[i].ID] = i
 	}
@@ -330,59 +358,121 @@ func generateID(tokens []string) string {
 	return base64.StdEncoding.EncodeToString(sum)
 }
 
-func tokenizeString(str string) []string {
-	replacer := strings.NewReplacer(
-		"'s", "s",
-		"0,0", "00",
-		"1,0", "10",
-		"1,4", "14",
-		"2,0", "20",
-		"3,0", "30",
-		"4,0", "40",
-		"5,0", "50",
-		"8,0", "80",
-		"\u2018s", "s",
-		"\u2019s", "s",
-		"\u2013s", "s",
-		"\"s", "s",
-	)
-	str = replacer.Replace(str)
+type ParsedToken struct {
+	Content     string
+	RealContent string
+	Start       int
+	End         int
+}
 
-	replacer = strings.NewReplacer(
-		".", " ",
-		"'", " ",
-		"*", "",
-		",", " ",
-		":", " ",
-		"\n", " ",
-		"\r", " ",
-		"\t", " ",
-		";", " ",
-		"\"", " ",
-		"-", " ",
-		"_", " ",
-		"=", " ",
-		"+", " ",
-		"#", " ",
-		"(", " ",
-		")", " ",
-		"[", " ",
-		"]", " ",
-		"{", " ",
-		"}", " ",
-		"!", " ",
-		"\u2018", " ",
-		"\u2019", " ",
-		"\u2013", " ",
-	)
-	str = replacer.Replace(str)
+func tokenizeString2(str string) []ParsedToken {
+	seperators := map[rune]bool{
+		'.':      true,
+		'"':      true,
+		',':      true,
+		':':      true,
+		'\n':     true,
+		'\r':     true,
+		'\t':     true,
+		' ':      true,
+		';':      true,
+		'\'':     true,
+		'-':      true,
+		'_':      true,
+		'=':      true,
+		'+':      true,
+		'#':      true,
+		'(':      true,
+		')':      true,
+		'[':      true,
+		']':      true,
+		'{':      true,
+		'}':      true,
+		'!':      true,
+		'\u2018': true,
+		'\u2019': true,
+		'\u2013': true,
+	}
 
-	str = strings.ToLower(str)
-	parts := strings.Split(str, " ")
-	parts = sliceutils.TrimSpace(parts)
-	parts = sliceutils.Remove(parts, "")
+	accompanys := map[rune]bool{
+		'\'':     true,
+		'"':      true,
+		'\u2018': true,
+		'\u2019': true,
+		'\u2013': true,
+	}
 
-	return parts
+	digits := map[rune]bool{
+		'0': true,
+		'1': true,
+		'2': true,
+		'3': true,
+		'4': true,
+		'5': true,
+		'6': true,
+		'7': true,
+		'8': true,
+		'9': true,
+	}
+
+	input := []rune(str)
+
+	var tokens []ParsedToken
+	var current []rune
+	var tokenStart int
+
+	for i := 0; i < len(input); i++ {
+		r := input[i]
+
+		if len(current) == 0 && seperators[r] {
+			continue
+		}
+		if accompanys[r] && i+1 < len(input) && input[i+1] == 's' {
+			current = append(current, 's')
+			i = i + 1
+			continue
+		}
+		if (r == ',' || r == '.') && len(current) > 0 && digits[current[len(current)-1]] && i+1 < len(input) && digits[input[i+1]] {
+			continue
+		}
+		if r == '*' {
+			continue
+		}
+
+		if seperators[r] {
+			tokens = append(tokens, ParsedToken{
+				Content:     strings.ToLower(string(current)),
+				Start:       tokenStart,
+				End:         i,
+				RealContent: string(input[tokenStart:i]),
+			})
+
+			current = nil
+			continue
+		}
+
+		if len(current) == 0 {
+			tokenStart = i
+		}
+		current = append(current, r)
+	}
+
+	if len(current) > 0 {
+		tokens = append(tokens, ParsedToken{
+			Content:     strings.ToLower(string(current)),
+			Start:       tokenStart,
+			End:         len(input),
+			RealContent: string(input[tokenStart:]),
+		})
+	}
+
+	/*
+		for _, item := range tokens {
+			fmt.Printf("%s | %s\n", item.Content, item.RealContent)
+		}
+	*/
+
+	return tokens
 }
 
 func readScores(fname string) map[string]Score {

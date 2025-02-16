@@ -67,10 +67,17 @@ func fillCard(highlights HighlightDatabase) {
 
 		var skips []string
 		skips = append(skips, currentToken.Content)
+
 		if strings.HasSuffix(currentToken.Content, "ies") {
 			skips = append(skips, currentToken.Content[:len(currentToken.Content)-3])
 		} else if strings.HasSuffix(currentToken.Content, "y") {
 			skips = append(skips, fmt.Sprintf("%sies", currentToken.Content[:len(currentToken.Content)-1]))
+		}
+
+		if strings.HasSuffix(currentToken.Content, "er") {
+			skips = append(skips, fmt.Sprintf("%sing", currentToken.Content[:len(currentToken.Content)-2]))
+		} else if strings.HasSuffix(currentToken.Content, "ing") {
+			skips = append(skips, fmt.Sprintf("%ser", currentToken.Content[:len(currentToken.Content)-3]))
 		}
 
 		if strings.HasSuffix(currentToken.Content, "s") {
@@ -96,20 +103,42 @@ func fillCard(highlights HighlightDatabase) {
 			var lineToPrint bytes.Buffer
 
 			lineToPrint.WriteString("\n> ")
-			for j := 0; j < i; j++ {
-				txt := highlights.TokenMap[h.Tokens[j]].Content
-				if j == lastI {
-					lineToPrint.WriteString(fmt.Sprintf("%s%s%s ", colorGreen, txt, colorNone))
-				} else {
-					lineToPrint.WriteString(fmt.Sprintf("%s ", txt))
-				}
-			}
-			lineToPrint.WriteString("____?\n\n")
+			/*
+				for j := 0; j < i; j++ {
+					txt := highlights.TokenMap[h.Tokens[j]].Content
+					if j == lastI {
+						lineToPrint.WriteString(fmt.Sprintf("%s%s%s ", colorGreen, txt, colorNone))
+					} else {
+						lineToPrint.WriteString(fmt.Sprintf("%s ", txt))
+					}
+				}*/
 
-			fmt.Printf("\n%s\n\n", fixAlignment(lineToPrint.String(), alignmentWidth))
+			if lastI > 0 {
+				lineToPrint.WriteString(h.Content[:h.TokenStarts[lastI]])
+				lineToPrint.WriteString(colorGreen)
+				lineToPrint.WriteString(h.Content[h.TokenStarts[lastI]:h.TokenStarts[lastI+1]])
+				lineToPrint.WriteString(colorNone)
+				lineToPrint.WriteString(h.Content[h.TokenStarts[lastI+1]:h.TokenStarts[i]])
+			} else {
+				lineToPrint.WriteString(h.Content[:h.TokenStarts[i]])
+			}
+			lineToPrint.WriteString(fmt.Sprintf(" %s____?%s", colorYellow, colorNone))
+
+			replacer := strings.NewReplacer(
+				"\n", " ",
+				"\r", " ",
+				"\t", " ",
+			)
+			content := fixAlignment(replacer.Replace(lineToPrint.String()), alignmentWidth)
+
+			fmt.Printf("\n%s\n\n", content)
 
 			for j := 0; j < len(nextTokens); j++ {
-				txt := highlights.TokenMap[nextTokens[j]].Content
+				//txt := highlights.TokenMap[nextTokens[j]].Content
+				txt := highlights.TokenMap[nextTokens[j]].RealContent
+				if len(txt) > 0 {
+					txt = fmt.Sprintf("%s%s", strings.ToUpper(txt[:1]), txt[1:])
+				}
 				fmt.Printf("  %d. %s\n", (j + 1), txt)
 			}
 			fmt.Printf("  Q. Quit\n")
@@ -149,7 +178,34 @@ func fillCard(highlights HighlightDatabase) {
 	score = score * float64(h.Score.Count)
 	h.Score.Sum = h.Score.Sum + score
 
-	fmt.Printf("%s\n", h.Content)
+	if lastI > 0 {
+		var lineToPrint bytes.Buffer
+
+		lineToPrint.WriteString(h.Content[:h.TokenStarts[lastI]])
+		lineToPrint.WriteString(colorGreen)
+		lineToPrint.WriteString(h.Content[h.TokenStarts[lastI]:h.TokenStarts[lastI+1]])
+		lineToPrint.WriteString(colorNone)
+		lineToPrint.WriteString(h.Content[h.TokenStarts[lastI+1]:])
+
+		replacer := strings.NewReplacer(
+			"\n", " ",
+			"\r", " ",
+			"\t", " ",
+		)
+		content := fixAlignment(replacer.Replace(lineToPrint.String()), alignmentWidth)
+
+		fmt.Printf("\n%s\n\n", content)
+	} else {
+		replacer := strings.NewReplacer(
+			"\n", " ",
+			"\r", " ",
+			"\t", " ",
+		)
+		content := fixAlignment(replacer.Replace(h.Content), alignmentWidth)
+
+		fmt.Printf("\n%s\n\n", content)
+	}
+
 	if fileExists("scores.txt") {
 		copyFile("scores.txt", "scores.txt.bak")
 	}
