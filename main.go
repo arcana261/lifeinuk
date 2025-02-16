@@ -58,6 +58,7 @@ func fillCard(highlights HighlightDatabase) {
 	correctAnswers := 0
 	wrongAnswers := 0
 	lastI := -1
+	var previousWrongs []int
 
 	for i := 2; i < len(h.Tokens); i++ {
 		currentToken := highlights.TokenMap[h.Tokens[i]]
@@ -68,6 +69,9 @@ func fillCard(highlights HighlightDatabase) {
 
 		var skips []string
 		skips = append(skips, currentToken.Content)
+		for _, w := range previousWrongs {
+			skips = append(skips, highlights.TokenMap[w].Content)
+		}
 
 		if strings.HasSuffix(currentToken.Content, "ies") {
 			skips = append(skips, currentToken.Content[:len(currentToken.Content)-3])
@@ -87,11 +91,26 @@ func fillCard(highlights HighlightDatabase) {
 			skips = append(skips, fmt.Sprintf("%ss", currentToken.Content))
 		}
 
+		if strings.HasSuffix(currentToken.Content, "ation") {
+			skips = append(skips, currentToken.Content[:len(currentToken.Content)-5])
+		} else {
+			skips = append(skips, fmt.Sprintf("%sation", currentToken.Content))
+		}
+		if strings.HasSuffix(currentToken.Content, "ration") {
+			skips = append(skips, fmt.Sprintf("%ser", currentToken.Content[:len(currentToken.Content)-6]))
+		} else if strings.HasSuffix(currentToken.Content, "er") {
+			skips = append(skips, fmt.Sprintf("%sration", currentToken.Content[:len(currentToken.Content)-2]))
+		}
+
 		nextTokens := highlights.TokenMap[h.Tokens[i-1]].NominateNextTokens(
 			highlights,
 			puzzleChoiceCount-1,
 			skips...,
 		)
+		sliceutils.Permutate(previousWrongs)
+		for j := 0; j < len(previousWrongs) && len(nextTokens) < puzzleChoiceCount-1; j++ {
+			nextTokens = append(nextTokens, previousWrongs[j])
+		}
 		if len(nextTokens) < 1 {
 			continue
 		}
@@ -164,7 +183,10 @@ func fillCard(highlights HighlightDatabase) {
 			fmt.Fprintf(os.Stdout, "%sCORRECT!%s\n", colorGreen, colorNone)
 			correctAnswers = correctAnswers + 1
 			lastI = i
+			previousWrongs = nil
 		} else {
+			previousWrongs = append(previousWrongs, selected)
+
 			txt := highlights.TokenMap[selected].RealContent
 			if len(txt) > 0 {
 				txt = fmt.Sprintf("%s%s", strings.ToUpper(txt[:1]), txt[1:])
