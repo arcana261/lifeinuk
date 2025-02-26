@@ -91,6 +91,11 @@ func fillCard(highlights HighlightDatabase) {
 		} else {
 			skips = append(skips, fmt.Sprintf("%ss", currentToken.Content))
 		}
+		if strings.HasSuffix(currentToken.Content, "'s") {
+			skips = append(skips, currentToken.Content[:len(currentToken.Content)-2])
+		} else {
+			skips = append(skips, fmt.Sprintf("%s's", currentToken.Content))
+		}
 
 		if strings.HasSuffix(currentToken.Content, "ation") {
 			skips = append(skips, currentToken.Content[:len(currentToken.Content)-5])

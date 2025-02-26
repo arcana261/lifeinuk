@@ -436,8 +436,9 @@ func tokenizeString2(str string) []ParsedToken {
 		if len(current) == 0 && seperators[r] {
 			continue
 		}
-		if accompanys[r] && i+1 < len(input) && input[i+1] == 's' {
-			current = append(current, 's')
+		if accompanys[r] && i+1 < len(input) && ((i > 0 && (input[i-1] == 'o' || input[i-1] == 'O')) || input[i+1] == 's') {
+			current = append(current, '\'')
+			current = append(current, input[i+1])
 			i = i + 1
 			continue
 		}
